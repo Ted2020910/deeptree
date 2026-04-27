@@ -1,0 +1,38 @@
+{
+  "name": "dt-cli",
+  "version": "0.1.0",
+  "description": "Decision Tree CLI - Externalize AI agent decision-making as structured local Markdown decision trees",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "dt": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "dt": "tsx src/index.ts",
+    "build": "tsc && node -e \"const fs=require('fs'),p=require('path');function cp(s,d){fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const a=p.join(s,f),b=p.join(d,f);fs.statSync(a).isDirectory()?cp(a,b):fs.copyFileSync(a,b)}};cp('src/public','dist/public')\"",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "decision-tree",
+    "ai-agent",
+    "cli",
+    "human-in-the-loop"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "chokidar": "^5.0.0",
+    "commander": "^14.0.3",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.1",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.6.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

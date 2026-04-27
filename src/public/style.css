@@ -1,0 +1,502 @@
+/* ============================================================
+   dt — Decision Tree 前端样式
+   暗色主题，左侧树形图 + 右侧面板
+   ============================================================ */
+
+:root {
+  --bg-primary: #1a1b26;
+  --bg-secondary: #24283b;
+  --bg-tertiary: #2f3349;
+  --bg-hover: #3b3f5c;
+  --text-primary: #c0caf5;
+  --text-secondary: #a9b1d6;
+  --text-muted: #565f89;
+  --border: #3b3f5c;
+  --accent: #7aa2f7;
+  --accent-dim: #3d59a1;
+  --green: #9ece6a;
+  --red: #f7768e;
+  --yellow: #e0af68;
+  --cyan: #7dcfff;
+  --purple: #bb9af7;
+  --orange: #ff9e64;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ─── Header ──────────────────────────── */
+
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  min-height: 44px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo {
+  font-size: 20px;
+}
+
+.header-left h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.header-right {
+  display: flex;
+  gap: 8px;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.badge-connected {
+  background: rgba(158, 206, 106, 0.15);
+  color: var(--green);
+}
+
+.badge-disconnected {
+  background: rgba(247, 118, 142, 0.15);
+  color: var(--red);
+}
+
+/* ─── Main Layout ─────────────────────── */
+
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Tree Panel ──────────────────────── */
+
+#tree-panel {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-width: 0;
+}
+
+#tree-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#tree-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Tree node styles */
+.node circle {
+  stroke-width: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.node circle:hover {
+  filter: brightness(1.3);
+}
+
+.node text {
+  font-size: 12px;
+  fill: var(--text-primary);
+  pointer-events: none;
+}
+
+.node .node-id {
+  font-size: 10px;
+  fill: var(--text-muted);
+}
+
+.link {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1.5px;
+}
+
+/* Node type colors */
+.node-pending circle { fill: var(--text-muted); stroke: var(--text-muted); }
+.node-in_progress circle { fill: var(--accent); stroke: var(--accent); }
+.node-decided circle { fill: var(--green); stroke: var(--green); }
+.node-completed circle { fill: var(--green); stroke: var(--green); }
+.node-rejected circle { fill: var(--red); stroke: var(--red); }
+
+.node-selected circle {
+  stroke-width: 3px;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+/* Type shapes via different radius */
+.node-goal circle { r: 14; }
+.node-subproblem circle { r: 10; }
+.node-solution circle { r: 10; }
+.node-evaluation circle { r: 7; }
+.node-reflection circle { r: 7; }
+.node-practice circle { r: 7; }
+
+/* ─── Side Panel ──────────────────────── */
+
+#side-panel {
+  width: 360px;
+  min-width: 300px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.count-badge {
+  font-size: 10px;
+  background: var(--red);
+  color: white;
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+/* Tab content */
+.tab-content {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ─── Node Detail ─────────────────────── */
+
+.detail-header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.node-id {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.node-type-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.node-status-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.status-pending { background: rgba(86, 95, 137, 0.3); color: var(--text-muted); }
+.status-in_progress { background: rgba(122, 162, 247, 0.2); color: var(--accent); }
+.status-decided { background: rgba(158, 206, 106, 0.2); color: var(--green); }
+.status-completed { background: rgba(158, 206, 106, 0.2); color: var(--green); }
+.status-rejected { background: rgba(247, 118, 142, 0.2); color: var(--red); }
+
+#detail-title {
+  font-size: 16px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.detail-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.detail-meta div {
+  margin-bottom: 4px;
+}
+
+.detail-content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.detail-content h1,
+.detail-content h2,
+.detail-content h3 {
+  color: var(--text-primary);
+  margin: 12px 0 6px;
+}
+
+/* ─── Interactions ────────────────────── */
+
+.interaction-card {
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--yellow);
+}
+
+.interaction-card.answered {
+  border-left-color: var(--green);
+  opacity: 0.7;
+}
+
+.interaction-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.interaction-type {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(224, 175, 104, 0.2);
+  color: var(--yellow);
+}
+
+.interaction-question {
+  font-size: 13px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.interaction-answer {
+  margin-top: 8px;
+}
+
+.interaction-answer textarea {
+  width: 100%;
+  min-height: 60px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  padding: 8px;
+  font-size: 12px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.interaction-answer textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.interaction-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.option-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.option-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.option-btn.selected {
+  border-color: var(--accent);
+  background: rgba(122, 162, 247, 0.1);
+  color: var(--accent);
+}
+
+.btn {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Contexts ────────────────────────── */
+
+.context-card {
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid var(--cyan);
+}
+
+.context-card:hover {
+  background: var(--bg-hover);
+}
+
+.context-card.confirmed {
+  border-left-color: var(--green);
+}
+
+.context-card.draft {
+  border-left-color: var(--text-muted);
+}
+
+.context-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.context-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ─── Status Bar ──────────────────────── */
+
+#status-bar {
+  padding: 4px 16px;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+/* ─── Scrollbar ───────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ─── Responsive ──────────────────────── */
+
+@media (max-width: 768px) {
+  #main {
+    flex-direction: column;
+  }
+  #side-panel {
+    width: 100%;
+    min-width: unset;
+    max-height: 50vh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}

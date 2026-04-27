@@ -1,0 +1,95 @@
+/**
+ * hooks.ts — Claude Code CLAUDE.md 自动配置 (v2)
+ *
+ * dt init 时自动配置 CLAUDE.md，告知 Agent 如何使用 dt。
+ * 不再需要 PostToolUse Hook（变更检查已嵌入 dt tree/status）。
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+const CLAUDE_MD_SECTION = `
+## Decision Tree 协议
+
+dt 是人机协作的决策过程外化工具。目的是让人和 AI 的认知对齐、让决策过程可见可追溯、让人在关键时刻保持判断力。
+
+如果当前目录存在 \`.dt/\` 项目，在会话开始时先执行 \`dt tree\` 了解当前状态。
+
+### 核心命令
+
+| 动作 | 命令 | 说明 |
+|------|------|------|
+| 看 | \`dt tree\` | 全局结构（自动检测用户编辑） |
+| 看 | \`dt status\` | 项目概览 |
+| 看 | \`dt show <id>\` | 节点详情 |
+| 想 | \`dt add <type> "标题" --parent <id>\` | 添加节点 |
+| 想 | \`dt add <type> "标题" --parent <id> --link <id> --link-summary "摘要"\` | 添加节点并同时绑定跨分支关联 |
+| 想 | \`dt link <src> <tgt> "摘要"\` | 添加跨分支关联 |
+| 写 | \`dt update <id> --status/--title/--summary/--type\` | 更新结构化字段 |
+
+### 工作方式
+
+**看**：用 \`dt tree/status/show\` 了解结构概览。需要深入时直接 Read \`.dt/nodes/xxx.md\`。
+
+**想**：用 \`dt add\` 拆解子问题、添加方案。非根节点必须带 \`--parent\`（树形关系）或 \`--link\`（跨分支关联），孤立节点失去上下文。用 \`dt link\` 建立已有节点之间的关联。
+
+**写**：结构化字段（状态/标题/摘要/类型）用 \`dt update\`。正文内容直接 Edit \`.dt/nodes/xxx.md\`。
+
+### 节点正文结构
+
+每个节点的 Markdown 正文包含四个层次，按顺序填写：
+
+\`\`\`markdown
+## 已知前提
+来自其他节点或外部的既有共识、约束条件、背景信息。
+是进入本节点讨论的"行李"——不在本节点推导，直接引用。
+
+## 认知起点
+本节点讨论的具体出发点：这个问题/任务是什么，
+为什么在这个节点讨论，讨论的边界在哪里。
+
+## 推导逻辑
+分析过程、方案比较、权衡、推导步骤。
+记录"为什么这样决定"比"决定了什么"更有价值。
+用户的关键修正要显式记录（如"用户指出..."）。
+
+## 讨论共识
+达成的结论或决策。讨论进行中时可为空，
+讨论结束后更新此节，同时将节点 status 更新为 decided/completed。
+\`\`\`
+
+**节点 frontmatter** 包含 title（标题）、summary（一句话摘要）、type、status、edges（关联边）。
+summary 用于 \`dt tree\` 快速扫描，应在讨论完成后更新。
+
+**Git 操作由 dt CLI 自动处理，无需手动 commit。**
+用户编辑的变更会在下次执行 \`dt tree\` 或 \`dt status\` 时自动检测并提示。
+`;
+
+
+/**
+ * 设置 .claude/settings.json（简化版，不再添加 Hook）
+ */
+export function setupClaudeHook(projectDir: string): void {
+  // v2: 不再需要 PostToolUse Hook
+  // 变更检查已嵌入 dt tree / dt status
+}
+
+/**
+ * 追加 CLAUDE.md 中的 dt 协议说明
+ */
+export function appendClaudeMd(projectDir: string): void {
+  const claudeMdPath = path.join(projectDir, 'CLAUDE.md');
+
+  let existing = '';
+  if (fs.existsSync(claudeMdPath)) {
+    existing = fs.readFileSync(claudeMdPath, 'utf-8');
+  }
+
+  // 检查是否已有 dt 协议
+  if (existing.includes('Decision Tree 协议')) {
+    return; // 已经配置过了
+  }
+
+  const content = existing + '\n' + CLAUDE_MD_SECTION;
+  fs.writeFileSync(claudeMdPath, content, 'utf-8');
+}

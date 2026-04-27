@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dt — Decision Tree</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部标题栏 -->
+    <header id="header">
+      <div class="header-left">
+        <span class="logo">🌳</span>
+        <h1 id="project-name">dt</h1>
+      </div>
+      <div class="header-right">
+        <span id="node-count" class="badge">0 节点</span>
+        <span id="ws-status" class="badge badge-disconnected">断开</span>
+      </div>
+    </header>
+
+    <!-- 主体区域 -->
+    <main id="main">
+      <!-- 左侧：树形图 -->
+      <section id="tree-panel">
+        <div id="tree-container">
+          <svg id="tree-svg"></svg>
+        </div>
+      </section>
+
+      <!-- 右侧：面板 -->
+      <aside id="side-panel">
+        <!-- Tab 导航 -->
+        <nav class="tabs">
+          <button class="tab active" data-tab="detail">节点详情</button>
+          <button class="tab" data-tab="interactions">
+            交互 <span id="interaction-badge" class="count-badge" style="display:none">0</span>
+          </button>
+          <button class="tab" data-tab="contexts">上下文</button>
+        </nav>
+
+        <!-- 节点详情 Tab -->
+        <div class="tab-content active" id="tab-detail">
+          <div id="no-selection" class="empty-state">
+            <p>👈 点击树节点查看详情</p>
+          </div>
+          <div id="node-detail" style="display:none">
+            <div class="detail-header">
+              <span id="detail-id" class="node-id"></span>
+              <span id="detail-type" class="node-type-tag"></span>
+              <span id="detail-status" class="node-status-tag"></span>
+            </div>
+            <h3 id="detail-title"></h3>
+            <div id="detail-meta" class="detail-meta"></div>
+            <div id="detail-content" class="detail-content"></div>
+          </div>
+        </div>
+
+        <!-- 交互 Tab -->
+        <div class="tab-content" id="tab-interactions">
+          <div id="interactions-list"></div>
+          <div id="no-interactions" class="empty-state">
+            <p>暂无待回答交互</p>
+          </div>
+        </div>
+
+        <!-- 上下文 Tab -->
+        <div class="tab-content" id="tab-contexts">
+          <div id="contexts-list"></div>
+          <div id="no-contexts" class="empty-state">
+            <p>暂无上下文</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer id="status-bar">
+      <span id="status-message">正在连接...</span>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
