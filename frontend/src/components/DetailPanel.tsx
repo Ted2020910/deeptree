@@ -6,7 +6,7 @@ marked.setOptions({ breaks: true })
 
 const STATUS_COLORS: Record<string, string> = {
   pending:     '#D4A843',
-  in_progress: '#007AFF',
+  in_progress: '#5B9BF6',
   decided:     '#4A9E5C',
   completed:   '#4A9E5C',
   rejected:    '#D71921',
@@ -31,6 +31,8 @@ export function DetailPanel({ node, allNodes, saveFns }: DetailPanelProps) {
   const [editingContent, setEditingContent] = useState(false)
   const [saveStatus, setSaveStatus] = useState('')
   const [dirty, setDirty] = useState(false)
+
+  const statusColor = STATUS_COLORS[node.status] ?? '#999'
 
   // Sync when node changes
   useEffect(() => {
@@ -76,15 +78,16 @@ export function DetailPanel({ node, allNodes, saveFns }: DetailPanelProps) {
     <div className="detail-panel">
       {/* Header */}
       <div className="detail-panel__header">
-        <div className="detail-panel__meta">
-          <span>#{node.id}</span>
-          <span className="detail-panel__tag">{node.type.toUpperCase()}</span>
-          <span
-            className="detail-panel__tag detail-panel__tag--status"
-            style={{ color: STATUS_COLORS[node.status] ?? '#999', borderColor: STATUS_COLORS[node.status] ?? '#ccc' }}
-          >
-            {node.status.replace('_', ' ').toUpperCase()}
-          </span>
+        {/* Hero ID */}
+        <div className="detail-panel__hero-id" style={{ color: statusColor }}>
+          #{node.id}
+        </div>
+
+        {/* Segmented decoration line */}
+        <div className="detail-panel__deco-line">
+          <span style={{ backgroundColor: statusColor, width: '40%' }} />
+          <span style={{ backgroundColor: statusColor, opacity: 0.5, width: '25%' }} />
+          <span style={{ backgroundColor: statusColor, opacity: 0.2, width: '15%' }} />
         </div>
 
         <input
@@ -93,6 +96,17 @@ export function DetailPanel({ node, allNodes, saveFns }: DetailPanelProps) {
           onChange={e => { setTitle(e.target.value); markDirty() }}
           placeholder="节点标题"
         />
+
+        <div className="detail-panel__meta">
+          <span>#{node.id}</span>
+          <span className="detail-panel__tag">{node.type.toUpperCase()}</span>
+          <span
+            className="detail-panel__tag detail-panel__tag--status"
+            style={{ color: statusColor, borderColor: statusColor }}
+          >
+            {node.status.replace('_', ' ').toUpperCase()}
+          </span>
+        </div>
 
         <textarea
           className="detail-panel__summary-input"
@@ -108,7 +122,10 @@ export function DetailPanel({ node, allNodes, saveFns }: DetailPanelProps) {
         {/* Edges */}
         {node.edges.length > 0 && (
           <div className="detail-panel__edges">
-            <div className="detail-panel__section-label">EDGES</div>
+            <div className="detail-panel__section-label">
+              <span className="led led--blue" />
+              EDGES
+            </div>
             {node.edges.map((e, i) => {
               const target = nodeById(e.target)
               return (
@@ -127,7 +144,10 @@ export function DetailPanel({ node, allNodes, saveFns }: DetailPanelProps) {
         {/* Content */}
         <div className="detail-panel__content-area">
           <div className="detail-panel__content-header">
-            <span className="detail-panel__section-label">CONTENT</span>
+            <span className="detail-panel__section-label">
+              <span className={`led ${content.trim() ? 'led--green' : 'led--dim'}`} />
+              CONTENT
+            </span>
             <button
               className="btn-ghost"
               onClick={() => { setEditingContent(v => !v) }}
@@ -156,8 +176,8 @@ export function DetailPanel({ node, allNodes, saveFns }: DetailPanelProps) {
       <div className="detail-panel__footer">
         <span className="save-status">{saveStatus}</span>
         {dirty && (
-          <button className="btn-save" onClick={handleSave}>
-            [SAVE]
+          <button className="btn-technical" onClick={handleSave}>
+            <span className="btn-technical__icon">■</span> SAVE
           </button>
         )}
       </div>

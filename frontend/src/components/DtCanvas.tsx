@@ -1,8 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import {
   ReactFlow,
-  Background,
-  BackgroundVariant,
   Controls,
   MarkerType,
   useNodesState,
@@ -13,12 +11,17 @@ import Dagre from '@dagrejs/dagre'
 import type { DtNode } from '../types'
 import { NodeCard, type DtFlowNode } from './NodeCard'
 import { CustomEdge, type DtFlowEdge } from './CustomEdge'
+import { DotWaveBackground } from './DotWaveBackground'
 
 const nodeTypes = { dtNode: NodeCard }
 const edgeTypes = { dtEdge: CustomEdge }
 
 const NODE_W = 280
 const NODE_H = 88
+
+function getEdgeColor(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue('--edge-color').trim() || '#444444'
+}
 
 function buildLayout(dtNodes: DtNode[]): { nodes: DtFlowNode[]; edges: DtFlowEdge[] } {
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
@@ -33,6 +36,7 @@ function buildLayout(dtNodes: DtNode[]): { nodes: DtFlowNode[]; edges: DtFlowEdg
 
   const rfEdges: DtFlowEdge[] = []
   const edgeSet = new Set<string>()
+  const markerColor = getEdgeColor()
 
   dtNodes.forEach(n => g.setNode(n.id, { width: NODE_W, height: NODE_H }))
 
@@ -49,7 +53,7 @@ function buildLayout(dtNodes: DtNode[]): { nodes: DtFlowNode[]; edges: DtFlowEdg
           target: n.id,
           type: 'dtEdge',
           data: { edgeType: 'parent', summary: '' },
-          markerEnd: { type: MarkerType.ArrowClosed, color: '#CCCCCC', width: 12, height: 12 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: markerColor, width: 10, height: 10 },
         })
       }
     }
@@ -107,7 +111,8 @@ export function DtCanvas({ dtNodes, selectedId, onSelect }: DtCanvasProps) {
   const onPaneClick = useCallback(() => onSelect(null), [onSelect])
 
   return (
-    <div style={{ flex: 1, position: 'relative' }}>
+    <div className="canvas-wrap">
+      <DotWaveBackground />
       <ReactFlow
         nodes={nodes.map(n => ({ ...n, selected: n.id === selectedId }))}
         edges={edges}
@@ -124,18 +129,14 @@ export function DtCanvas({ dtNodes, selectedId, onSelect }: DtCanvasProps) {
         nodesDraggable
         elementsSelectable
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={16}
-          size={1}
-          color="#CCCCCC"
-        />
         <Controls showInteractive={false} />
       </ReactFlow>
 
       {dtNodes.length === 0 && (
         <div className="canvas-empty">
-          <span className="canvas-empty__title">NO NODES — RUN dt add TO BEGIN</span>
+          <span className="canvas-empty__logo">dt<span className="accent-dot">·</span></span>
+          <span className="canvas-empty__title">AWAITING INPUT</span>
+          <span className="canvas-empty__cmd"><span>&gt;</span> dt add decision "..."</span>
         </div>
       )}
     </div>

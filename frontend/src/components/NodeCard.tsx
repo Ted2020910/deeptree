@@ -6,7 +6,7 @@ export type DtFlowNode = Node<DtNode, 'dtNode'>
 
 const STATUS_COLORS: Record<string, string> = {
   pending:     '#D4A843',
-  in_progress: '#007AFF',
+  in_progress: '#5B9BF6',
   decided:     '#4A9E5C',
   completed:   '#4A9E5C',
   rejected:    '#D71921',
@@ -26,9 +26,17 @@ export function NodeCard({ data, selected }: NodeProps<DtFlowNode>) {
   return (
     <div
       className={`node-card ${selected ? 'node-card--selected' : ''}`}
-      style={{ borderLeftColor: statusColor }}
+      style={{
+        borderTopColor: statusColor,
+        color: statusColor,
+        boxShadow: selected
+          ? `0 0 16px var(--glow-color), 0 -1px 10px ${statusColor}40`
+          : `0 -1px 8px ${statusColor}30`,
+      }}
     >
       <Handle type="target" position={Position.Top} />
+
+      <div className="node-card__id" style={{ color: statusColor }}>#{data.id}</div>
 
       <div className="node-card__meta">
         <span>{data.type.toUpperCase()}</span>

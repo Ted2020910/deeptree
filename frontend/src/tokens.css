@@ -1,20 +1,29 @@
-/* ─── Nothing Design System — Light Mode ─── */
+/* ─── Nothing Design System — Dark Mode (OLED) ─── */
 
 :root {
-  --bg:              #F5F5F5;
-  --surface:         #FFFFFF;
-  --surface-raised:  #F0F0F0;
-  --border:          #E8E8E8;
-  --border-visible:  #CCCCCC;
-  --text-disabled:   #999999;
-  --text-secondary:  #666666;
-  --text-primary:    #1A1A1A;
-  --text-display:    #000000;
+  --bg:              #000000;
+  --surface:         #111111;
+  --surface-raised:  #1A1A1A;
+  --border:          #222222;
+  --border-visible:  #333333;
+  --text-disabled:   #666666;
+  --text-secondary:  #999999;
+  --text-primary:    #E8E8E8;
+  --text-display:    #FFFFFF;
   --accent:          #D71921;
-  --accent-subtle:   rgba(215, 25, 33, 0.10);
+  --accent-subtle:   rgba(215, 25, 33, 0.15);
   --success:         #4A9E5C;
   --warning:         #D4A843;
-  --interactive:     #007AFF;
+  --interactive:     #5B9BF6;
+
+  /* Theme-aware helpers */
+  --edge-color:        #444444;
+  --edge-color-dim:    #333333;
+  --scan-highlight:    rgba(255,255,255,0.06);
+  --glow-color:        rgba(255,255,255,0.06);
+  --glow-color-strong: rgba(255,255,255,0.10);
+  --dot-texture:       rgba(51,51,51,0.3);
+  --dot-wave-rgb:      255,255,255;
 
   --space-xs:  4px;
   --space-sm:  8px;
@@ -24,6 +33,32 @@
   --space-2xl: 48px;
 
   font-family: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+/* ─── Light Mode — Printed Technical Manual ─── */
+[data-theme="light"] {
+  --bg:              #F5F5F5;
+  --surface:         #FFFFFF;
+  --surface-raised:  #F0F0F0;
+  --border:          #E8E8E8;
+  --border-visible:  #CCCCCC;
+  --text-disabled:   #999999;
+  --text-secondary:  #666666;
+  --text-primary:    #1A1A1A;
+  --text-display:    #000000;
+  --accent-subtle:   rgba(215, 25, 33, 0.10);
+  --interactive:     #007AFF;
+
+  --edge-color:        #BBBBBB;
+  --edge-color-dim:    #CCCCCC;
+  --scan-highlight:    rgba(0,0,0,0.04);
+  --glow-color:        rgba(0,0,0,0.05);
+  --glow-color-strong: rgba(0,0,0,0.10);
+  --dot-texture:       rgba(0,0,0,0.06);
+  --dot-wave-rgb:      0,0,0;
+
+  color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,7 +74,7 @@ body {
 
 /* ─── App shell ─── */
 .app-header {
-  height: 48px;
+  height: 56px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -57,9 +92,14 @@ body {
 
 .app-header__logo {
   font-family: 'Doto', 'Space Mono', monospace;
-  font-size: 20px;
+  font-size: 22px;
   letter-spacing: -0.02em;
   color: var(--text-display);
+}
+
+.accent-dot {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .app-header__project {
@@ -72,12 +112,60 @@ body {
 .app-header__right {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-lg);
+}
+
+.app-header__count-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+
+.app-header__count {
+  font-family: 'Doto', 'Space Mono', monospace;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  color: var(--text-display);
+}
+
+.app-header__count-label {
   font-family: 'Space Mono', monospace;
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-disabled);
+  text-transform: uppercase;
+}
+
+/* ─── Status bar ─── */
+.status-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
+}
+
+.status-bar {
+  display: flex;
+  gap: 2px;
+  width: 180px;
+  height: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.status-bar__segment {
+  min-width: 4px;
+  height: 100%;
+  transition: width 300ms ease-out;
+}
+
+.status-stats {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
   letter-spacing: 0.06em;
   color: var(--text-disabled);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .app-body {
@@ -90,23 +178,76 @@ body {
 .node-card {
   width: 280px;
   background: var(--surface);
-  border: 1px solid var(--border-visible);
-  border-left: 3px solid var(--border-visible);
-  border-radius: 12px;
-  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--border-visible);
+  border-radius: 4px;
+  padding: var(--space-md) var(--space-md) var(--space-md) 20px;
   cursor: pointer;
   transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
   user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 左侧刻度线 */
+.node-card::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 10%;
+  bottom: 18px;
+  width: 2px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      currentColor 0px,
+      currentColor 6px,
+      transparent 6px,
+      transparent 10px
+    );
+  opacity: 0.25;
+  transition: opacity 150ms ease-out;
+}
+
+/* 底部点阵装饰条 + scan overlay */
+.node-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background:
+    linear-gradient(90deg, var(--scan-highlight) 0%, transparent 50%) no-repeat,
+    radial-gradient(circle, var(--border-visible) 0.75px, transparent 0.75px);
+  background-size: 0% 100%, 6px 6px;
+  background-position: 0 0, 3px 3px;
+  opacity: 0.5;
+  transition: opacity 150ms ease-out, background-size 400ms ease-out;
 }
 
 .node-card:hover {
-  border-color: var(--text-disabled);
-  border-left-color: inherit;
+  border-color: var(--border-visible);
+  border-top-color: inherit;
+}
+
+.node-card:hover::before {
+  opacity: 0.5;
+}
+
+.node-card:hover::after {
+  opacity: 1;
+  background-size: 200% 100%, 6px 6px;
 }
 
 .node-card--selected {
-  border-color: var(--text-primary);
-  border-left-color: inherit;
+  border-color: var(--text-display);
+  border-top-color: inherit;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.node-card--selected::before {
+  opacity: 0.8;
 }
 
 .node-card__meta {
@@ -119,6 +260,14 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-disabled);
+}
+
+.node-card__id {
+  font-family: 'Doto', 'Space Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
 }
 
 .node-card__meta-dot { color: var(--border-visible); }
@@ -146,11 +295,14 @@ body {
 
 /* ─── Edge label ─── */
 .edge-label {
-  background: var(--surface);
+  background:
+    radial-gradient(circle, var(--dot-texture) 0.5px, transparent 0.5px),
+    var(--surface);
+  background-size: 4px 4px, 100% 100%;
   border: 1px solid var(--border-visible);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-family: 'Space Mono', monospace;
+  border-radius: 2px;
+  padding: 2px 8px;
+  font-family: 'Doto', 'Space Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
   color: var(--text-secondary);
@@ -161,9 +313,46 @@ body {
   pointer-events: none;
 }
 
+/* Edge flow animation */
+.edge-flow {
+  animation: dotFlow 2s linear infinite;
+}
+
+/* Edge stroke theming via CSS */
+.react-flow__edge path.edge-parent {
+  stroke: var(--edge-color);
+}
+
+.react-flow__edge path.edge-related {
+  stroke: var(--edge-color-dim);
+}
+
+/* Theme toggle button */
+.btn-theme-toggle {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+  background: none;
+  border: 1px solid var(--border-visible);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+
+.btn-theme-toggle:hover {
+  color: var(--text-display);
+  border-color: var(--text-secondary);
+}
+
 /* ─── Detail Panel ─── */
 .detail-panel {
-  width: 380px;
+  width: 400px;
   flex-shrink: 0;
   background: var(--surface);
   border-left: 1px solid var(--border);
@@ -173,15 +362,36 @@ body {
 }
 
 .detail-panel__header {
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-lg) var(--space-lg) var(--space-md);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.detail-panel__hero-id {
+  font-family: 'Doto', 'Space Mono', monospace;
+  font-size: 28px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  margin-bottom: var(--space-sm);
+}
+
+.detail-panel__deco-line {
+  display: flex;
+  gap: 2px;
+  height: 3px;
+  margin-bottom: var(--space-md);
+}
+
+.detail-panel__deco-line span {
+  height: 100%;
+  min-width: 4px;
 }
 
 .detail-panel__meta {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  margin-top: var(--space-sm);
   margin-bottom: var(--space-sm);
   font-family: 'Space Mono', monospace;
   font-size: 10px;
@@ -255,12 +465,44 @@ body {
 }
 
 .detail-panel__section-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   font-family: 'Space Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-disabled);
   margin-bottom: var(--space-sm);
+}
+
+/* LED indicator dots */
+.led {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.led--blue {
+  background: var(--interactive);
+  box-shadow: 0 0 6px var(--interactive);
+}
+
+.led--green {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.led--red {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.led--dim {
+  background: var(--text-disabled);
+  box-shadow: none;
 }
 
 .edge-item {
@@ -324,7 +566,6 @@ body {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-display);
   background: var(--text-display);
   color: var(--bg);
   border: none;
@@ -335,6 +576,39 @@ body {
 }
 
 .btn-save:hover { opacity: 0.8; }
+
+/* Technical button — mechanical key feel */
+.btn-technical {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--text-display);
+  color: var(--bg);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 20px;
+  height: 36px;
+  cursor: pointer;
+  transition: transform 100ms ease-out, filter 100ms ease-out;
+}
+
+.btn-technical:hover {
+  filter: brightness(0.92);
+}
+
+.btn-technical:active {
+  transform: scale(0.97);
+  filter: brightness(0.85);
+}
+
+.btn-technical__icon {
+  font-size: 8px;
+  line-height: 1;
+}
 
 .detail-panel__footer {
   padding: var(--space-md) var(--space-lg);
@@ -469,8 +743,16 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   pointer-events: none;
+}
+
+.canvas-empty__logo {
+  font-family: 'Doto', 'Space Mono', monospace;
+  font-size: 72px;
+  color: var(--border);
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .canvas-empty__title {
@@ -481,32 +763,174 @@ body {
   color: var(--text-disabled);
 }
 
-/* ReactFlow overrides */
-.react-flow__background { background: var(--bg); }
-.react-flow__handle {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--border-visible);
-  border: 1px solid var(--surface);
+.canvas-empty__cmd {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--text-disabled);
+  letter-spacing: 0.02em;
 }
-.react-flow__handle:hover { background: var(--text-secondary); }
+
+.canvas-empty__cmd span {
+  color: var(--text-secondary);
+}
+
+/* ─── State screens (loading / error) ─── */
+.state-screen {
+  display: flex;
+  height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  background: var(--bg);
+}
+
+.state-screen__logo {
+  font-family: 'Doto', 'Space Mono', monospace;
+  font-size: 48px;
+  color: var(--text-display);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: var(--space-sm);
+}
+
+.state-screen__text {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--text-disabled);
+  text-transform: uppercase;
+}
+
+/* Scan bar for loading */
+.scan-bar {
+  width: 200px;
+  height: 4px;
+  background: var(--border);
+  overflow: hidden;
+  display: flex;
+  gap: 2px;
+}
+
+.scan-bar__fill {
+  height: 100%;
+  width: 40%;
+  background: var(--text-secondary);
+  animation: progressScan 1.5s ease-in-out infinite;
+}
+
+/* Error state */
+.state-screen__alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.state-screen__error-title {
+  font-family: 'Doto', 'Space Mono', monospace;
+  font-size: 20px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.state-screen__error-detail {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.state-screen__error-hint {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--text-disabled);
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-md);
+}
+
+/* ReactFlow overrides */
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  background: var(--bg);
+}
+
+.dot-wave-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.react-flow__pane { background: transparent !important; }
+.react-flow__renderer { background: transparent !important; }
+.react-flow__handle {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+  border: none;
+  box-shadow: 0 0 4px var(--text-disabled);
+}
+.react-flow__handle:hover {
+  background: var(--text-secondary);
+  box-shadow: 0 0 6px var(--text-secondary);
+}
 
 .react-flow__controls {
-  border: 1px solid var(--border-visible);
-  border-radius: 8px;
+  border: 1px solid var(--border-visible) !important;
+  border-radius: 4px !important;
   overflow: hidden;
-  box-shadow: none;
+  box-shadow: none !important;
+  background: var(--surface) !important;
 }
 
 .react-flow__controls-button {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  color: var(--text-secondary);
-  width: 28px;
-  height: 28px;
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--text-secondary) !important;
+  fill: var(--text-secondary) !important;
+  width: 28px !important;
+  height: 28px !important;
 }
 
-.react-flow__controls-button:hover { background: var(--surface-raised); }
-.react-flow__controls-button:last-child { border-bottom: none; }
-.react-flow__controls-button svg { fill: currentColor; }
+.react-flow__controls-button:hover {
+  background: var(--surface-raised) !important;
+  color: var(--text-primary) !important;
+  fill: var(--text-primary) !important;
+}
+.react-flow__controls-button:last-child { border-bottom: none !important; }
+.react-flow__controls-button svg { fill: currentColor !important; }
+
+/* ─── Animations ─── */
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 12px var(--glow-color); }
+  50%      { box-shadow: 0 0 20px var(--glow-color-strong); }
+}
+
+@keyframes dotFlow {
+  to { stroke-dashoffset: -16; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.blink { animation: blink 1.5s ease-in-out infinite; }
+
+@keyframes progressScan {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

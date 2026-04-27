@@ -9,6 +9,11 @@ import {
 export type DtFlowEdgeData = { edgeType: 'parent' | 'related'; summary: string }
 export type DtFlowEdge = Edge<DtFlowEdgeData, 'dtEdge'>
 
+function getCssVar(name: string, fallback: string): string {
+  const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return val || fallback
+}
+
 export function CustomEdge({
   id,
   sourceX,
@@ -31,16 +36,21 @@ export function CustomEdge({
 
   const isRelated = data?.edgeType === 'related'
 
+  const edgeColor = getCssVar('--edge-color', '#444444')
+  const edgeColorDim = getCssVar('--edge-color-dim', '#333333')
+
   return (
     <>
       <BaseEdge
         id={id}
         path={edgePath}
-        markerEnd={markerEnd}
+        markerEnd={isRelated ? undefined : markerEnd}
+        className={isRelated ? '' : 'edge-flow'}
         style={{
-          stroke: '#CCCCCC',
-          strokeWidth: 1.5,
-          strokeDasharray: isRelated ? '5 4' : undefined,
+          stroke: isRelated ? edgeColorDim : edgeColor,
+          strokeWidth: isRelated ? 1.5 : 2,
+          strokeDasharray: isRelated ? '1 8' : '2 6',
+          strokeLinecap: 'round',
         }}
       />
       {data?.summary && (
