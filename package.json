@@ -11,6 +11,8 @@
     "dev": "tsx src/index.ts",
     "dt": "tsx src/index.ts",
     "build": "tsc && node -e \"const fs=require('fs'),p=require('path');function cp(s,d){fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const a=p.join(s,f),b=p.join(d,f);fs.statSync(a).isDirectory()?cp(a,b):fs.copyFileSync(a,b)}};cp('src/public','dist/public')\"",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "dev:frontend": "cd frontend && npm install && npm run dev",
     "clean": "rm -rf dist"
   },
   "keywords": [

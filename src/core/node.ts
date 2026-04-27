@@ -169,6 +169,15 @@ export function addEdge(nodeId: string, edge: Edge): void {
 }
 
 /**
+ * 更新节点正文内容（保留 frontmatter 不变）
+ */
+export function updateNodeContent(nodeId: string, newContent: string): void {
+  const filePath = getNodePath(nodeId);
+  const { frontmatter } = readFrontmatterFile<NodeFrontmatter>(filePath);
+  writeFrontmatterFile(filePath, frontmatter, newContent);
+}
+
+/**
  * 列出所有节点（自动迁移旧格式）
  */
 export function listAllNodes(): NodeFile[] {

@@ -6,8 +6,20 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readTreeConfig, requireDtRoot } from '../core/project.js';
-import { listAllNodes, readNode, nodeExists } from '../core/node.js';
+import { listAllNodes, readNode, nodeExists, updateNodeFields, updateNodeContent } from '../core/node.js';
 import { buildTree } from '../utils/render.js';
+
+async function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+    req.on('end', () => {
+      try { resolve(JSON.parse(body) as Record<string, unknown>); }
+      catch { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
 
 function json(res: ServerResponse, data: unknown, status = 200): void {
   res.writeHead(status, {
@@ -37,7 +49,7 @@ export async function handleApiRequest(
   if (method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     });
     res.end();
@@ -81,6 +93,34 @@ export async function handleApiRequest(
       }
       const node = readNode(id);
       json(res, { ...node.frontmatter, content: node.content });
+      return true;
+    }
+
+    // PUT /api/nodes/:id/frontmatter — 更新结构化字段
+    const fmMatch = pathname.match(/^\/api\/nodes\/([^/]+)\/frontmatter$/);
+    if (method === 'PUT' && fmMatch) {
+      const id = fmMatch[1];
+      if (!nodeExists(id)) { error(res, `节点 ${id} 不存在`, 404); return true; }
+      const body = await parseBody(req);
+      const allowed = ['title', 'summary', 'status', 'type'] as const;
+      const updates: Record<string, unknown> = {};
+      for (const key of allowed) {
+        if (key in body) updates[key] = body[key];
+      }
+      updateNodeFields(id, updates as Parameters<typeof updateNodeFields>[1]);
+      json(res, { ok: true });
+      return true;
+    }
+
+    // PUT /api/nodes/:id/content — 更新 Markdown 正文
+    const contentMatch = pathname.match(/^\/api\/nodes\/([^/]+)\/content$/);
+    if (method === 'PUT' && contentMatch) {
+      const id = contentMatch[1];
+      if (!nodeExists(id)) { error(res, `节点 ${id} 不存在`, 404); return true; }
+      const body = await parseBody(req);
+      if (typeof body.content !== 'string') { error(res, 'content 字段必须为字符串'); return true; }
+      updateNodeContent(id, body.content);
+      json(res, { ok: true });
       return true;
     }
 
