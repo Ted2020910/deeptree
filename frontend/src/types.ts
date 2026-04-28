@@ -27,3 +27,14 @@ export interface SaveFns {
   updateFrontmatter: (id: string, updates: Partial<Pick<DtNode, 'title' | 'summary' | 'status' | 'type'>>) => Promise<void>
   updateContent: (id: string, content: string) => Promise<void>
 }
+
+export interface ProjectInfo {
+  id: string
+  name: string
+  path: string
+  reachable: boolean
+}
+
+export interface ProjectsApiResponse {
+  projects: ProjectInfo[]
+}

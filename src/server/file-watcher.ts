@@ -1,7 +1,7 @@
 /**
  * file-watcher.ts — 文件监听 → WebSocket 广播桥接 (v2)
  *
- * 监听 .dt/nodes/ 目录，变更时通过 WebSocket 通知前端。
+ * 支持多项目监听，变更时携带 projectId 通知前端。
  * 内置防抖：300ms 内合并通知。
  */
 
@@ -13,45 +13,61 @@ interface WatcherHandle {
   close: () => Promise<void>;
 }
 
+interface ProjectWatch {
+  projectId: string;
+  paths: DtPaths;
+}
+
 /**
  * 启动文件监听，将变更广播到 WebSocket
+ * 支持单项目（向后兼容）和多项目
  */
 export function startFileWatcher(
-  paths: DtPaths,
+  pathsOrList: DtPaths | ProjectWatch[],
   wsServer: DtWebSocketServer,
 ): WatcherHandle {
   const watchers: Array<{ close: () => Promise<void> }> = [];
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  function notifyUpdate(): void {
-    if (debounceTimer) clearTimeout(debounceTimer);
+  function notifyUpdate(projectId: string): void {
+    const existing = debounceTimers.get(projectId);
+    if (existing) clearTimeout(existing);
 
-    debounceTimer = setTimeout(() => {
-      debounceTimer = null;
+    debounceTimers.set(projectId, setTimeout(() => {
+      debounceTimers.delete(projectId);
       const msg: WsMessage = {
         type: 'update',
         scope: 'nodes',
+        project: projectId,
         timestamp: new Date().toISOString(),
       };
       wsServer.broadcast(msg);
-    }, 300);
+    }, 300));
   }
 
-  // 只监听 nodes 目录
-  const watcher = watchDirectory(paths.nodes, '*.md');
-  watchers.push(watcher);
+  // 规范化输入：兼容旧的单 DtPaths 参数
+  const watchList: ProjectWatch[] = Array.isArray(pathsOrList)
+    ? pathsOrList
+    : [{ projectId: '_default', paths: pathsOrList }];
 
-  (async () => {
-    for await (const _event of watcher.events) {
-      notifyUpdate();
-    }
-  })().catch(() => {
-    // 监听器关闭时忽略错误
-  });
+  for (const { projectId, paths } of watchList) {
+    const watcher = watchDirectory(paths.nodes, '*.md');
+    watchers.push(watcher);
+
+    const pid = projectId; // closure capture
+    (async () => {
+      for await (const _event of watcher.events) {
+        notifyUpdate(pid);
+      }
+    })().catch(() => {
+      // 监听器关闭时忽略错误
+    });
+  }
 
   return {
     close: async () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
+      for (const timer of debounceTimers.values()) clearTimeout(timer);
+      debounceTimers.clear();
       await Promise.all(watchers.map((w) => w.close()));
     },
   };

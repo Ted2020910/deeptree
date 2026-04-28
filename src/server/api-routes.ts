@@ -1,13 +1,17 @@
 /**
  * api-routes.ts — REST API 路由处理 (v2)
  *
- * 精简版：只保留 nodes/tree/status/export 相关 API。
+ * 支持多项目路由 /api/projects/:id/*
+ * 保留旧版 /api/tree 兼容路由
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { readTreeConfig, requireDtRoot } from '../core/project.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import { readTreeConfig, requireDtRoot, getDtPaths } from '../core/project.js';
 import { listAllNodes, readNode, nodeExists, updateNodeFields, updateNodeContent } from '../core/node.js';
 import { buildTree } from '../utils/render.js';
+import { listProjects, findProjectById } from '../core/registry.js';
 
 async function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
@@ -31,6 +35,15 @@ function json(res: ServerResponse, data: unknown, status = 200): void {
 
 function error(res: ServerResponse, message: string, status = 400): void {
   json(res, { error: message }, status);
+}
+
+/** 解析项目 dtRoot，不存在则返回 null */
+function resolveDtRootForProject(projectId: string): string | null {
+  const entry = findProjectById(projectId);
+  if (!entry) return null;
+  const dtRoot = path.join(entry.path, '.dt');
+  if (!fs.existsSync(dtRoot)) return null;
+  return dtRoot;
 }
 
 /**
@@ -59,19 +72,86 @@ export async function handleApiRequest(
   if (!pathname.startsWith('/api/')) return false;
 
   try {
-    // GET /api/tree — 完整树结构
-    if (method === 'GET' && pathname === '/api/tree') {
-      const dtRoot = requireDtRoot();
+
+    // ─── 多项目路由 ─────────────────────────────────────────
+
+    // GET /api/projects — 注册项目列表
+    if (method === 'GET' && pathname === '/api/projects') {
+      const projects = listProjects();
+      json(res, { projects });
+      return true;
+    }
+
+    // GET /api/projects/:id/tree
+    const projectTreeMatch = pathname.match(/^\/api\/projects\/([^/]+)\/tree$/);
+    if (method === 'GET' && projectTreeMatch) {
+      const projectId = projectTreeMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
       const config = readTreeConfig(dtRoot);
-      const nodes = listAllNodes();
+      const nodes = listAllNodes(dtRoot);
       const tree = config.root_node ? buildTree(nodes, config.root_node) : null;
       json(res, {
         config,
         tree,
-        nodes: nodes.map((n) => ({
-          ...n.frontmatter,
-          content: n.content,
-        })),
+        nodes: nodes.map(n => ({ ...n.frontmatter, content: n.content })),
+      });
+      return true;
+    }
+
+    // PUT /api/projects/:id/nodes/:nid/frontmatter
+    const projectFmMatch = pathname.match(/^\/api\/projects\/([^/]+)\/nodes\/([^/]+)\/frontmatter$/);
+    if (method === 'PUT' && projectFmMatch) {
+      const [, projectId, nodeId] = projectFmMatch;
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      if (!nodeExists(nodeId, dtRoot)) { error(res, `节点 ${nodeId} 不存在`, 404); return true; }
+      const body = await parseBody(req);
+      const allowed = ['title', 'summary', 'status', 'type'] as const;
+      const updates: Record<string, unknown> = {};
+      for (const key of allowed) {
+        if (key in body) updates[key] = body[key];
+      }
+      updateNodeFields(nodeId, updates as Parameters<typeof updateNodeFields>[1], dtRoot);
+      json(res, { ok: true });
+      return true;
+    }
+
+    // PUT /api/projects/:id/nodes/:nid/content
+    const projectContentMatch = pathname.match(/^\/api\/projects\/([^/]+)\/nodes\/([^/]+)\/content$/);
+    if (method === 'PUT' && projectContentMatch) {
+      const [, projectId, nodeId] = projectContentMatch;
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      if (!nodeExists(nodeId, dtRoot)) { error(res, `节点 ${nodeId} 不存在`, 404); return true; }
+      const body = await parseBody(req);
+      if (typeof body.content !== 'string') { error(res, 'content 字段必须为字符串'); return true; }
+      updateNodeContent(nodeId, body.content, dtRoot);
+      json(res, { ok: true });
+      return true;
+    }
+
+    // ─── 兼容旧版路由 ───────────────────────────────────────
+
+    // GET /api/tree — 完整树结构（兼容旧版，使用当前目录或第一个可达项目）
+    if (method === 'GET' && pathname === '/api/tree') {
+      let dtRoot: string;
+      try {
+        dtRoot = requireDtRoot();
+      } catch {
+        // 降级到注册表第一个可达项目
+        const projects = listProjects();
+        const first = projects.find(p => p.reachable);
+        if (!first) { error(res, '未找到可用的 dt 项目', 404); return true; }
+        dtRoot = path.join(first.path, '.dt');
+      }
+      const config = readTreeConfig(dtRoot);
+      const nodes = listAllNodes(dtRoot);
+      const tree = config.root_node ? buildTree(nodes, config.root_node) : null;
+      json(res, {
+        config,
+        tree,
+        nodes: nodes.map(n => ({ ...n.frontmatter, content: n.content })),
       });
       return true;
     }
@@ -186,7 +266,6 @@ export async function handleApiRequest(
           lines.push(`    ${fm.parent} --> ${fm.id}`);
         }
 
-        // 渲染 edges
         const edges = fm.edges ?? [];
         for (const edge of edges) {
           if (edge.direction === 'to' || edge.direction === 'related') {

@@ -23,6 +23,7 @@ import { registerShowCommand } from './commands/show.js';
 import { registerAddCommand } from './commands/add.js';
 import { registerLinkCommand } from './commands/link.js';
 import { registerUpdateCommand } from './commands/update.js';
+import { registerProjectCommands } from './commands/register.js';
 import { registerServeCommand } from './commands/serve.js';
 
 const program = new Command();
@@ -43,5 +44,6 @@ registerAddCommand(program);
 registerLinkCommand(program);
 registerUpdateCommand(program);
 registerServeCommand(program);
+registerProjectCommands(program);
 
 program.parse();

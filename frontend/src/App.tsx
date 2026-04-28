@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTree } from './hooks/useTree'
+import { useProjects } from './hooks/useProjects'
 import { DtCanvas } from './components/DtCanvas'
 import { DetailPanel } from './components/DetailPanel'
 import { StatusBar } from './components/StatusBar'
+import { ProjectSelector } from './components/ProjectSelector'
 
 function useTheme() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    // Read from DOM (set by index.html inline script)
     return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
   })
 
@@ -20,32 +21,57 @@ function useTheme() {
   }, [theme])
 
   const toggle = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
-
   return { theme, toggle }
 }
 
+function getInitialProjectId(projects: { id: string; reachable: boolean }[]): string {
+  // 优先读 URL query param
+  const params = new URLSearchParams(location.search)
+  const fromUrl = params.get('project')
+  if (fromUrl && projects.find(p => p.id === fromUrl)) return fromUrl
+  // 否则取第一个可达项目
+  return projects.find(p => p.reachable)?.id ?? projects[0]?.id ?? ''
+}
+
 export default function App() {
-  const { data, loading, error, updateFrontmatter, updateContent } = useTree()
+  const { projects, loading: projectsLoading, error: projectsError } = useProjects()
+  const [currentProjectId, setCurrentProjectId] = useState<string>('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const { theme, toggle } = useTheme()
+
+  // 项目列表加载完后，确定初始项目
+  useEffect(() => {
+    if (projects.length > 0 && !currentProjectId) {
+      setCurrentProjectId(getInitialProjectId(projects))
+    }
+  }, [projects, currentProjectId])
+
+  const { data, loading: treeLoading, error: treeError, updateFrontmatter, updateContent } = useTree(currentProjectId)
+
+  const loading = projectsLoading || (!!currentProjectId && treeLoading)
+  const error = projectsError ?? (currentProjectId ? treeError : null)
 
   const nodes = data?.nodes ?? []
   const selectedNode = nodes.find(n => n.id === selectedId) ?? null
 
-  /* ─── Loading: scan animation ─── */
+  const handleProjectChange = (id: string) => {
+    setCurrentProjectId(id)
+    setSelectedId(null)
+    history.replaceState(null, '', `?project=${id}`)
+  }
+
+  /* ─── Loading ─── */
   if (loading) {
     return (
       <div className="state-screen">
         <span className="state-screen__logo">dt<span className="accent-dot">·</span></span>
-        <div className="scan-bar">
-          <div className="scan-bar__fill" />
-        </div>
+        <div className="scan-bar"><div className="scan-bar__fill" /></div>
         <span className="state-screen__text blink">[INITIALIZING...]</span>
       </div>
     )
   }
 
-  /* ─── Error: red alert ─── */
+  /* ─── Error ─── */
   if (error) {
     return (
       <div className="state-screen">
@@ -67,7 +93,15 @@ export default function App() {
       <header className="app-header">
         <div className="app-header__left">
           <span className="app-header__logo">dt<span className="accent-dot">·</span></span>
-          <span className="app-header__project">{data?.config.project ?? '—'}</span>
+          {projects.length > 1 ? (
+            <ProjectSelector
+              projects={projects}
+              currentId={currentProjectId}
+              onChange={handleProjectChange}
+            />
+          ) : (
+            <span className="app-header__project">{data?.config.project ?? '—'}</span>
+          )}
         </div>
         <div className="app-header__right">
           <StatusBar nodes={nodes} />
@@ -91,7 +125,6 @@ export default function App() {
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
-
         {selectedNode && (
           <DetailPanel
             node={selectedNode}

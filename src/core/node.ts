@@ -9,21 +9,26 @@ import { requireDtRoot, getDtPaths, readTreeConfig, updateTreeConfig } from './p
 import { generateNextId, idToFilename } from '../utils/id.js';
 import type { NodeFrontmatter, NodeFile, NodeStatus, Edge } from '../types/index.js';
 
+/** 解析 dtRoot：有参数用参数，没有就 requireDtRoot() */
+function resolveDtRoot(dtRoot?: string): string {
+  return dtRoot ?? requireDtRoot();
+}
+
 /**
  * 获取节点文件路径
  */
-export function getNodePath(nodeId: string): string {
-  const dtRoot = requireDtRoot();
-  const paths = getDtPaths(dtRoot);
+export function getNodePath(nodeId: string, dtRoot?: string): string {
+  const root = resolveDtRoot(dtRoot);
+  const paths = getDtPaths(root);
   return path.join(paths.nodes, idToFilename(nodeId));
 }
 
 /**
  * 检查节点是否存在
  */
-export function nodeExists(nodeId: string): boolean {
+export function nodeExists(nodeId: string, dtRoot?: string): boolean {
   try {
-    return fs.existsSync(getNodePath(nodeId));
+    return fs.existsSync(getNodePath(nodeId, dtRoot));
   } catch {
     return false;
   }
@@ -32,8 +37,8 @@ export function nodeExists(nodeId: string): boolean {
 /**
  * 读取一个节点（自动迁移旧格式）
  */
-export function readNode(nodeId: string): NodeFile {
-  const filePath = getNodePath(nodeId);
+export function readNode(nodeId: string, dtRoot?: string): NodeFile {
+  const filePath = getNodePath(nodeId, dtRoot);
   if (!fs.existsSync(filePath)) {
     throw new Error(`节点 ${nodeId} 不存在`);
   }
@@ -81,9 +86,10 @@ export function createNode(opts: {
   summary?: string;
   parent?: string | null;
   content?: string;
+  dtRoot?: string;
 }): string {
-  const dtRoot = requireDtRoot();
-  const paths = getDtPaths(dtRoot);
+  const root = resolveDtRoot(opts.dtRoot);
+  const paths = getDtPaths(root);
   const id = generateNextId(paths.nodes, '');
 
   const frontmatter: NodeFrontmatter = {
@@ -107,13 +113,13 @@ export function createNode(opts: {
 
   // 如果有父节点，更新父节点的 children
   if (opts.parent) {
-    addChildToNode(opts.parent, id);
+    addChildToNode(opts.parent, id, root);
   }
 
   // 如果没有 root_node，设置为 root
-  const config = readTreeConfig(dtRoot);
+  const config = readTreeConfig(root);
   if (!config.root_node) {
-    updateTreeConfig(dtRoot, { root_node: id });
+    updateTreeConfig(root, { root_node: id });
   }
 
   return id;
@@ -122,8 +128,8 @@ export function createNode(opts: {
 /**
  * 给节点添加子节点引用
  */
-export function addChildToNode(parentId: string, childId: string): void {
-  const filePath = getNodePath(parentId);
+export function addChildToNode(parentId: string, childId: string, dtRoot?: string): void {
+  const filePath = getNodePath(parentId, dtRoot);
   const { frontmatter, content } = readFrontmatterFile<NodeFrontmatter>(filePath);
 
   if (!frontmatter.children.includes(childId)) {
@@ -136,8 +142,8 @@ export function addChildToNode(parentId: string, childId: string): void {
 /**
  * 更新节点状态
  */
-export function updateNodeStatus(nodeId: string, status: NodeStatus): void {
-  updateFrontmatter<NodeFrontmatter>(getNodePath(nodeId), { status } as Partial<NodeFrontmatter>);
+export function updateNodeStatus(nodeId: string, status: NodeStatus, dtRoot?: string): void {
+  updateFrontmatter<NodeFrontmatter>(getNodePath(nodeId, dtRoot), { status } as Partial<NodeFrontmatter>);
 }
 
 /**
@@ -146,15 +152,16 @@ export function updateNodeStatus(nodeId: string, status: NodeStatus): void {
 export function updateNodeFields(
   nodeId: string,
   updates: Partial<Pick<NodeFrontmatter, 'title' | 'summary' | 'status' | 'type'>>,
+  dtRoot?: string,
 ): void {
-  updateFrontmatter<NodeFrontmatter>(getNodePath(nodeId), updates as Partial<NodeFrontmatter>);
+  updateFrontmatter<NodeFrontmatter>(getNodePath(nodeId, dtRoot), updates as Partial<NodeFrontmatter>);
 }
 
 /**
  * 给节点添加边
  */
-export function addEdge(nodeId: string, edge: Edge): void {
-  const filePath = getNodePath(nodeId);
+export function addEdge(nodeId: string, edge: Edge, dtRoot?: string): void {
+  const filePath = getNodePath(nodeId, dtRoot);
   const { frontmatter, content } = readFrontmatterFile<NodeFrontmatter>(filePath);
 
   // 防止重复边
@@ -171,8 +178,8 @@ export function addEdge(nodeId: string, edge: Edge): void {
 /**
  * 更新节点正文内容（保留 frontmatter 不变）
  */
-export function updateNodeContent(nodeId: string, newContent: string): void {
-  const filePath = getNodePath(nodeId);
+export function updateNodeContent(nodeId: string, newContent: string, dtRoot?: string): void {
+  const filePath = getNodePath(nodeId, dtRoot);
   const { frontmatter } = readFrontmatterFile<NodeFrontmatter>(filePath);
   writeFrontmatterFile(filePath, frontmatter, newContent);
 }
@@ -180,9 +187,9 @@ export function updateNodeContent(nodeId: string, newContent: string): void {
 /**
  * 列出所有节点（自动迁移旧格式）
  */
-export function listAllNodes(): NodeFile[] {
-  const dtRoot = requireDtRoot();
-  const paths = getDtPaths(dtRoot);
+export function listAllNodes(dtRoot?: string): NodeFile[] {
+  const root = resolveDtRoot(dtRoot);
+  const paths = getDtPaths(root);
   const nodesDir = paths.nodes;
 
   if (!fs.existsSync(nodesDir)) return [];
@@ -190,6 +197,6 @@ export function listAllNodes(): NodeFile[] {
   const files = fs.readdirSync(nodesDir).filter((f: string) => f.endsWith('.md')).sort();
   return files.map((f: string) => {
     const nodeId = f.replace(/\.md$/, '');
-    return readNode(nodeId);
+    return readNode(nodeId, root);
   });
 }

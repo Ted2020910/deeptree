@@ -13,6 +13,7 @@ import {
 } from '../core/project.js';
 import { setupClaudeHook, appendClaudeMd } from '../core/hooks.js';
 import { gitAutoCommit } from '../core/git.js';
+import { registerProject, pathToId } from '../core/registry.js';
 import type { TreeConfig } from '../types/index.js';
 
 export function registerInitCommand(program: Command): void {
@@ -59,6 +60,15 @@ export function registerInitCommand(program: Command): void {
 
       // 自动 git commit
       gitAutoCommit(dtRoot, `init: ${name}`);
+
+      // 注册到全局项目列表
+      try {
+        const id = pathToId(process.cwd());
+        registerProject({ id, name, path: process.cwd() });
+        console.log(chalk.green(`✓ 已注册到全局项目列表 [${id}]`));
+      } catch {
+        console.log(chalk.dim('  (跳过项目注册)'));
+      }
 
       // 输出成功信息
       console.log(chalk.green('✓ 决策树项目已初始化'));
