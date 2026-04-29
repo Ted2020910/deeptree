@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTree } from './hooks/useTree'
 import { useProjects } from './hooks/useProjects'
 import { DtCanvas } from './components/DtCanvas'
@@ -37,7 +37,9 @@ export default function App() {
   const { projects, loading: projectsLoading, error: projectsError } = useProjects()
   const [currentProjectId, setCurrentProjectId] = useState<string>('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [layoutTrigger, setLayoutTrigger] = useState(0)
   const { theme, toggle } = useTheme()
+  const triggerLayout = useCallback(() => setLayoutTrigger(n => n + 1), [])
 
   // 项目列表加载完后，确定初始项目
   useEffect(() => {
@@ -111,6 +113,13 @@ export default function App() {
           </div>
           <button
             className="btn-theme-toggle"
+            onClick={triggerLayout}
+            title="重新整理布局"
+          >
+            ⊞
+          </button>
+          <button
+            className="btn-theme-toggle"
             onClick={toggle}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
@@ -124,6 +133,7 @@ export default function App() {
           dtNodes={nodes}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          layoutTrigger={layoutTrigger}
         />
         {selectedNode && (
           <DetailPanel

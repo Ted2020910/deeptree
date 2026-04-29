@@ -6,7 +6,7 @@ import {
   type Edge,
 } from '@xyflow/react'
 
-export type DtFlowEdgeData = { edgeType: 'parent' | 'related'; summary: string }
+export type DtFlowEdgeData = { edgeType: 'parent' | 'cross'; summary: string }
 export type DtFlowEdge = Edge<DtFlowEdgeData, 'dtEdge'>
 
 function getCssVar(name: string, fallback: string): string {
@@ -34,22 +34,22 @@ export function CustomEdge({
     targetPosition,
   })
 
-  const isRelated = data?.edgeType === 'related'
+  const isCross = data?.edgeType === 'cross'
 
-  const edgeColor = getCssVar('--edge-color', '#444444')
-  const edgeColorDim = getCssVar('--edge-color-dim', '#333333')
+  const edgeColor = getCssVar('--edge-color', '#888888')
+  const edgeColorDim = getCssVar('--edge-color-dim', '#666666')
 
   return (
     <>
       <BaseEdge
         id={id}
         path={edgePath}
-        markerEnd={isRelated ? undefined : markerEnd}
-        className={isRelated ? '' : 'edge-flow'}
+        markerEnd={isCross ? undefined : markerEnd}
+        className={isCross ? '' : 'edge-flow'}
         style={{
-          stroke: isRelated ? edgeColorDim : edgeColor,
-          strokeWidth: isRelated ? 1.5 : 2,
-          strokeDasharray: isRelated ? '1 8' : '2 6',
+          stroke: isCross ? edgeColorDim : edgeColor,
+          strokeWidth: isCross ? 2 : 2.5,
+          strokeDasharray: isCross ? '2 6' : '4 5',
           strokeLinecap: 'round',
         }}
       />

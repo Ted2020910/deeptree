@@ -10,6 +10,8 @@ import type { TreeConfig } from '../types/index.js';
 /** .dt/ 子目录列表 */
 const DT_SUBDIRS = ['nodes'];
 
+// TreeConfig.root_node 已废弃，根节点由节点的 root:true 字段标记
+
 /**
  * 从当前工作目录向上查找 .dt/ 目录
  * @returns .dt/ 目录的绝对路径，未找到则返回 null

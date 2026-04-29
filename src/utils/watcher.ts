@@ -1,7 +1,10 @@
 /**
- * watcher.ts — 文件监听封装
+ * watcher.ts — 文件监听封装 (v2)
  *
- * 使用 chokidar 监听 .dt/ 目录下的文件变化
+ * 修复：
+ * - Windows 上 usePolling: true（chokidar 默认 fs.watch 在 Windows 不稳定）
+ * - 监听目录而非 glob 字符串（polling 模式下 glob 展开有问题）
+ * - 过滤逻辑移到事件处理层（只处理 .md 文件）
  */
 
 import { watch, type FSWatcher } from 'chokidar';
@@ -15,10 +18,12 @@ export interface WatchEvent {
 
 /**
  * 监听目录变化，返回一个异步可迭代器
+ * @param dir 监听的目录路径（直接传目录，不带 glob）
+ * @param _pattern 保留参数，不再使用（兼容旧调用签名）
  */
 export function watchDirectory(
   dir: string,
-  pattern: string = '*.md',
+  _pattern: string = '*.md',
 ): {
   events: AsyncIterable<WatchEvent>;
   close: () => Promise<void>;
@@ -27,9 +32,13 @@ export function watchDirectory(
   const queue: WatchEvent[] = [];
   let closed = false;
 
-  const watcher: FSWatcher = watch(path.join(dir, pattern), {
+  // 关键修复1：监听目录本身，而非 path.join(dir, '*.md')
+  // 关键修复2：usePolling:true，解决 Windows 上 fs.watch 不触发的问题
+  const watcher: FSWatcher = watch(dir, {
     ignoreInitial: true,
     persistent: true,
+    usePolling: true,
+    interval: 500,
     awaitWriteFinish: {
       stabilityThreshold: 300,
       pollInterval: 100,
@@ -37,6 +46,9 @@ export function watchDirectory(
   });
 
   function pushEvent(type: WatchEvent['type'], filePath: string) {
+    // 关键修复3：过滤逻辑移到这里，只处理 .md 文件
+    if (!filePath.endsWith('.md')) return;
+
     const event: WatchEvent = {
       type,
       filePath,

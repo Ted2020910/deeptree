@@ -43,10 +43,16 @@ export function registerStatusCommand(program: Command): void {
         typeCounts[t] = (typeCounts[t] ?? 0) + 1;
       }
 
+      // 找根节点
+      const roots = nodes.filter((n) => n.frontmatter.root === true);
+
       console.log('');
       console.log(chalk.bold(`📋 项目: ${config.project}`));
       console.log(chalk.dim('─'.repeat(50)));
-      console.log(`  根节点: ${config.root_node ?? '(未设置)'}`);
+      const rootLabels = roots.length > 0
+        ? roots.map((r) => `${r.frontmatter.id} (${r.frontmatter.title})`).join(', ')
+        : '(未设置，运行 `dt update <id> --root true`)';
+      console.log(`  根节点: ${rootLabels}`);
       console.log(`  创建时间: ${config.created}`);
       console.log('');
 

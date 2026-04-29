@@ -12,10 +12,9 @@ const STATUS_COLORS: Record<string, string> = {
   rejected:    '#D71921',
 }
 
-const DIRECTION_ARROW: Record<string, string> = {
-  to:      '→',
-  from:    '←',
-  related: '↔',
+const EDGE_TYPE_ARROW: Record<string, string> = {
+  to:   '→',
+  from: '←',
 }
 
 interface DetailPanelProps {
@@ -130,7 +129,7 @@ export function DetailPanel({ node, allNodes, saveFns }: DetailPanelProps) {
               const target = nodeById(e.target)
               return (
                 <div key={i} className="edge-item">
-                  <span className="edge-item__arrow">{DIRECTION_ARROW[e.direction] ?? '—'}</span>
+                  <span className="edge-item__arrow">{EDGE_TYPE_ARROW[e.type] ?? '—'}</span>
                   <span className="edge-item__target">{e.target}</span>
                   <span className="edge-item__summary">
                     {target ? `${target.title}${e.summary ? ` · ${e.summary}` : ''}` : e.summary}

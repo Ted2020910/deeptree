@@ -1,25 +1,24 @@
 export interface DtEdge {
   target: string
-  direction: 'from' | 'to' | 'related'
+  type: 'from' | 'to'
   summary: string
-  detail?: string
+  depth?: number
 }
 
 export interface DtNode extends Record<string, unknown> {
   id: string
+  root: boolean
   title: string
   summary: string
   type: string
   status: 'pending' | 'in_progress' | 'decided' | 'completed' | 'rejected'
-  parent: string | null
-  children: string[]
   edges: DtEdge[]
   created: string
   content: string
 }
 
 export interface TreeApiResponse {
-  config: { project: string; created: string; root_node: string | null }
+  config: { project: string; created: string }
   nodes: DtNode[]
 }
 

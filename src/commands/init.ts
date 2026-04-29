@@ -36,7 +36,6 @@ export function registerInitCommand(program: Command): void {
       const config: TreeConfig = {
         project: name,
         created: new Date().toISOString(),
-        root_node: null,
       };
 
       writeTreeConfig(dtRoot, config);

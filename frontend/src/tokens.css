@@ -17,8 +17,8 @@
   --interactive:     #5B9BF6;
 
   /* Theme-aware helpers */
-  --edge-color:        #444444;
-  --edge-color-dim:    #333333;
+  --edge-color:        #888888;
+  --edge-color-dim:    #666666;
   --scan-highlight:    rgba(255,255,255,0.06);
   --glow-color:        rgba(255,255,255,0.06);
   --glow-color-strong: rgba(255,255,255,0.10);
@@ -50,8 +50,8 @@
   --accent-subtle:   rgba(215, 25, 33, 0.10);
   --interactive:     #007AFF;
 
-  --edge-color:        #BBBBBB;
-  --edge-color-dim:    #CCCCCC;
+  --edge-color:        #888888;
+  --edge-color-dim:    #999999;
   --scan-highlight:    rgba(0,0,0,0.04);
   --glow-color:        rgba(0,0,0,0.05);
   --glow-color-strong: rgba(0,0,0,0.10);
