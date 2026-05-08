@@ -21,7 +21,11 @@ export function findDtRoot(startDir?: string): string | null {
 
   while (true) {
     const dtDir = path.join(dir, '.dt');
-    if (fs.existsSync(dtDir) && fs.statSync(dtDir).isDirectory()) {
+    if (
+      fs.existsSync(dtDir) &&
+      fs.statSync(dtDir).isDirectory() &&
+      fs.existsSync(path.join(dtDir, 'tree.yaml'))
+    ) {
       return dtDir;
     }
     const parent = path.dirname(dir);
