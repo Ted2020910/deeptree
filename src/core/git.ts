@@ -3,6 +3,7 @@
  *
  * dt CLI 的每次写操作后自动 git commit，
  * Agent 不需要知道 git 的存在。
+ * 同时在 commit 后触发远程同步（同样透明）。
  */
 
 import { execSync } from 'node:child_process';
@@ -61,6 +62,15 @@ export function gitAutoCommit(dtRoot: string, message: string): void {
       cwd: projectDir,
       stdio: 'pipe',
     });
+
+    // 透明地同步到云端（lazy import 避免循环依赖）
+    try {
+      import('./remote.js').then(({ remoteAutoSync }) => {
+        remoteAutoSync(dtRoot, message);
+      }).catch(() => {/* ignore */});
+    } catch {
+      // ignore
+    }
   } catch {
     // 静默处理任何 git 错误
   }

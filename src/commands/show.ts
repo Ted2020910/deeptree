@@ -7,6 +7,8 @@ import chalk from 'chalk';
 import { readNode, nodeExists } from '../core/node.js';
 import { isCrossRef } from '../types/index.js';
 import type { NodeStatus } from '../types/index.js';
+import { findDtRoot } from '../core/project.js';
+import { remotePullCurrent } from '../core/remote.js';
 
 const STATUS_ICON: Record<NodeStatus, string> = {
   pending: '⏳',
@@ -22,6 +24,9 @@ export function registerShowCommand(program: Command): void {
     .description('查看节点详情')
     .argument('<id>', '节点 ID')
     .action((id: string) => {
+      // 透明地从云端拉取最新
+      remotePullCurrent(findDtRoot() ?? undefined);
+
       if (!nodeExists(id)) {
         console.error(chalk.red(`✗ 节点 ${id} 不存在`));
         process.exit(1);
