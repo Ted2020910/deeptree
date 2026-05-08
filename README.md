@@ -166,6 +166,15 @@ edges:
 | `dt projects` | 列出所有注册项目 |
 | `dt serve` | 启动可视化服务 |
 
+### 跨设备同步
+
+| 命令 | 说明 |
+|------|------|
+| `dt remote set <github-url>` | 配置 GitHub 同步仓库（一次性设置） |
+| `dt remote status` | 查看同步状态 |
+| `dt remote list` | 列出云端所有项目（含其他设备的项目） |
+| `dt remote clone <id> [路径]` | 从云端下载某个项目到本机 |
+
 ---
 
 ## 多项目支持
@@ -183,6 +192,43 @@ dt serve      # 任意目录启动，自动加载所有项目
 ```bash
 dt link 009 other-project::015 "依赖其 API 设计结论" --depth 2
 ```
+
+---
+
+## 跨设备同步
+
+dt 支持通过一个私有 GitHub 仓库（`dt-cloud`）在多台设备之间同步决策树数据。
+
+**工作原理：**
+- 每次 `dt add` / `dt update` / `dt link` 后，自动静默推送到 GitHub——无需任何额外命令，对 AI Agent 完全透明
+- `dt tree` / `dt status` / `dt show` 前，自动拉取当前项目最新内容（3 秒超时，网络断开时静默跳过）
+- 每台机器只同步自己已注册的项目；其他设备的项目可通过 `dt remote list` 发现并按需下载
+
+**初始化（任意一台机器执行一次）：**
+
+```bash
+# 1. 在 GitHub 创建空的私有仓库（如 dt-cloud）
+
+# 2. 配置同步
+dt remote set git@github.com:你的用户名/dt-cloud.git
+
+# 之后所有 dt 写操作自动同步，无需关心
+```
+
+**在新机器上接入：**
+
+```bash
+dt remote set git@github.com:你的用户名/dt-cloud.git
+
+dt remote list
+#  ● deeptree          [已在本机]
+#  ⬇ companyclaw       [云端可下载]
+
+dt remote clone companyclaw ~/workspace/companyclaw
+# 下载后自动注册，之后也会自动同步
+```
+
+**全局 dt**（`~/.dt/global/`）同样会被同步，跨设备共享公共上下文。
 
 ---
 
