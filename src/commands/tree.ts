@@ -11,7 +11,6 @@ import { requireDtRoot, readTreeConfig } from '../core/project.js';
 import { listAllNodes } from '../core/node.js';
 import { buildForest, renderForest } from '../utils/render.js';
 import { gitCommitIfChanged } from '../core/git.js';
-import { remotePullCurrent } from '../core/remote.js';
 
 export function registerTreeCommand(program: Command): void {
   program
@@ -19,9 +18,6 @@ export function registerTreeCommand(program: Command): void {
     .description('展示决策树（支持多根）')
     .action(() => {
       const dtRoot = requireDtRoot();
-
-      // 透明地从云端拉取最新（3 秒超时，失败不影响）
-      remotePullCurrent(dtRoot);
 
       const humanChanges = gitCommitIfChanged(dtRoot);
       if (humanChanges) {

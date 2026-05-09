@@ -236,9 +236,7 @@ export function createNode(opts: {
     created: new Date().toISOString(),
   };
 
-  const defaultBody =
-    `# ${opts.title}\n\n## 已知前提\n\n## 认知起点\n\n## 推导逻辑\n\n## 讨论共识\n`;
-  const body = opts.content ? `# ${opts.title}\n\n${opts.content}` : defaultBody;
+  const body = opts.content ? `# ${opts.title}\n\n${opts.content}` : `# ${opts.title}\n`;
 
   const filePath = path.join(paths.nodes, idToFilename(id));
   writeFrontmatterFile(filePath, frontmatter, body);

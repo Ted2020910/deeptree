@@ -9,7 +9,6 @@ import chalk from 'chalk';
 import { requireDtRoot, readTreeConfig } from '../core/project.js';
 import { listAllNodes } from '../core/node.js';
 import { gitCommitIfChanged } from '../core/git.js';
-import { remotePullCurrent } from '../core/remote.js';
 
 export function registerStatusCommand(program: Command): void {
   program
@@ -17,9 +16,6 @@ export function registerStatusCommand(program: Command): void {
     .description('查看项目状态概览')
     .action(() => {
       const dtRoot = requireDtRoot();
-
-      // 透明地从云端拉取最新
-      remotePullCurrent(dtRoot);
 
       // 自动检测并提交人类编辑
       const humanChanges = gitCommitIfChanged(dtRoot);
