@@ -338,6 +338,63 @@ function resolveLocalProjectId(dtRoot: string): string | null {
   }
 }
 
+/** 单向更新一条已存在边的 summary（内部使用） */
+function updateEdgeSummarySingle(
+  nodeId: string,
+  target: string,
+  type: Edge['type'] | undefined,
+  summary: string,
+  dtRoot?: string,
+): boolean {
+  const filePath = getNodePath(nodeId, dtRoot);
+  if (!fs.existsSync(filePath)) return false;
+  const { frontmatter, content } = readFrontmatterFile<NodeFrontmatter>(filePath);
+  let touched = false;
+  for (const e of frontmatter.edges ?? []) {
+    if (e.target !== target) continue;
+    if (type !== undefined && e.type !== type) continue;
+    if (e.summary !== summary) {
+      e.summary = summary;
+      touched = true;
+    }
+  }
+  if (touched) writeFrontmatterFile(filePath, frontmatter, content);
+  return touched;
+}
+
+/**
+ * 双向更新边的 summary。两端都改。
+ * - 同项目：nodeId 与 target 双侧都改
+ * - 跨项目：本地 + 远端（远端不可达则只改本地）
+ */
+export function updateEdgeSummaryBidirectional(
+  nodeId: string,
+  target: string,
+  type: Edge['type'] | undefined,
+  summary: string,
+  dtRoot?: string,
+): void {
+  const localRoot = resolveDtRoot(dtRoot);
+
+  if (isCrossRef(target)) {
+    const ref = parseCrossRef(target)!;
+    updateEdgeSummarySingle(nodeId, target, type, summary, localRoot);
+    try {
+      const remoteRoot = resolveCrossRefRoot(ref.projectId);
+      const localProjectId = resolveLocalProjectId(localRoot);
+      const reverseTarget = localProjectId ? `${localProjectId}::${nodeId}` : nodeId;
+      const reverseType = type === undefined ? undefined : (type === 'from' ? 'to' : 'from');
+      updateEdgeSummarySingle(ref.nodeId, reverseTarget, reverseType, summary, remoteRoot);
+    } catch {
+      // 远端不可达：只改本地
+    }
+  } else {
+    updateEdgeSummarySingle(nodeId, target, type, summary, localRoot);
+    const reverseType = type === undefined ? undefined : (type === 'from' ? 'to' : 'from');
+    updateEdgeSummarySingle(target, nodeId, reverseType, summary, localRoot);
+  }
+}
+
 // ─── 更新操作 ────────────────────────────────────────────────
 
 export function updateNodeStatus(nodeId: string, status: NodeStatus, dtRoot?: string): void {
@@ -362,6 +419,110 @@ export function updateNodeContent(nodeId: string, newContent: string, dtRoot?: s
   const filePath = getNodePath(nodeId, dtRoot);
   const { frontmatter } = readFrontmatterFile<NodeFrontmatter>(filePath);
   writeFrontmatterFile(filePath, frontmatter, newContent);
+}
+
+// ─── 删除操作 ────────────────────────────────────────────────
+
+/**
+ * 单向移除一条边（内部使用，不自动补反向边）
+ */
+function removeEdgeSingle(
+  nodeId: string,
+  target: string,
+  type: Edge['type'] | undefined,
+  dtRoot?: string,
+): void {
+  const filePath = getNodePath(nodeId, dtRoot);
+  if (!fs.existsSync(filePath)) return;
+  const { frontmatter, content } = readFrontmatterFile<NodeFrontmatter>(filePath);
+  const before = frontmatter.edges?.length ?? 0;
+  frontmatter.edges = (frontmatter.edges ?? []).filter((e) => {
+    if (e.target !== target) return true;
+    if (type !== undefined && e.type !== type) return true;
+    return false;
+  });
+  if ((frontmatter.edges?.length ?? 0) !== before) {
+    writeFrontmatterFile(filePath, frontmatter, content);
+  }
+}
+
+/**
+ * 双向移除边：在 nodeId 与 edge.target 双侧都清除。
+ * 不指定 type 时移除两侧任意类型的相关边。
+ */
+export function removeEdgeBidirectional(
+  nodeId: string,
+  target: string,
+  type: Edge['type'] | undefined,
+  dtRoot?: string,
+): void {
+  const localRoot = resolveDtRoot(dtRoot);
+
+  if (isCrossRef(target)) {
+    const ref = parseCrossRef(target)!;
+    let remoteDtRoot: string | null = null;
+    try { remoteDtRoot = resolveCrossRefRoot(ref.projectId); } catch { /* 远端不可达则只清本地 */ }
+    removeEdgeSingle(nodeId, target, type, localRoot);
+    if (remoteDtRoot) {
+      const localProjectId = resolveLocalProjectId(localRoot);
+      const reverseTarget = localProjectId ? `${localProjectId}::${nodeId}` : nodeId;
+      const reverseType = type === undefined ? undefined : (type === 'from' ? 'to' : 'from');
+      removeEdgeSingle(ref.nodeId, reverseTarget, reverseType, remoteDtRoot);
+    }
+  } else {
+    removeEdgeSingle(nodeId, target, type, localRoot);
+    const reverseType = type === undefined ? undefined : (type === 'from' ? 'to' : 'from');
+    removeEdgeSingle(target, nodeId, reverseType, localRoot);
+  }
+}
+
+/**
+ * 删除节点：
+ *   - 删除节点文件
+ *   - 在所有引用它的本项目节点中清除相关边
+ *   - 跨项目的反向边清理需远端可达，否则忽略
+ */
+export function deleteNode(nodeId: string, dtRoot?: string): void {
+  const root = resolveDtRoot(dtRoot);
+  const filePath = getNodePath(nodeId, root);
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`节点 ${nodeId} 不存在`);
+  }
+
+  const { frontmatter } = readFrontmatterFile<NodeFrontmatter>(filePath);
+  const edges = frontmatter.edges ?? [];
+
+  // 先在每个相邻节点上移除反向边
+  for (const e of edges) {
+    if (isCrossRef(e.target)) {
+      const ref = parseCrossRef(e.target)!;
+      try {
+        const remoteRoot = resolveCrossRefRoot(ref.projectId);
+        const localProjectId = resolveLocalProjectId(root);
+        const reverseTarget = localProjectId ? `${localProjectId}::${nodeId}` : nodeId;
+        const reverseType = e.type === 'from' ? 'to' : 'from';
+        removeEdgeSingle(ref.nodeId, reverseTarget, reverseType, remoteRoot);
+      } catch {
+        // 远端不可达则忽略
+      }
+    } else {
+      const reverseType = e.type === 'from' ? 'to' : 'from';
+      removeEdgeSingle(e.target, nodeId, reverseType, root);
+    }
+  }
+
+  // 兜底：扫描全项目，删除任何指向该节点的悬挂边
+  const paths = getDtPaths(root);
+  if (fs.existsSync(paths.nodes)) {
+    for (const f of fs.readdirSync(paths.nodes)) {
+      if (!f.endsWith('.md')) continue;
+      const otherId = f.replace(/\.md$/, '');
+      if (otherId === nodeId) continue;
+      removeEdgeSingle(otherId, nodeId, undefined, root);
+    }
+  }
+
+  fs.unlinkSync(filePath);
 }
 
 // ─── 列表查询 ────────────────────────────────────────────────

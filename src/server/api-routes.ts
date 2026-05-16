@@ -9,9 +9,22 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
 import { readTreeConfig, requireDtRoot, getDtPaths } from '../core/project.js';
-import { listAllNodes, readNode, nodeExists, updateNodeFields, updateNodeContent } from '../core/node.js';
+import {
+  listAllNodes,
+  readNode,
+  nodeExists,
+  updateNodeFields,
+  updateNodeContent,
+  createNode,
+  deleteNode,
+  addEdgeBidirectional,
+  removeEdgeBidirectional,
+  updateEdgeSummaryBidirectional,
+} from '../core/node.js';
 import { buildForest, buildTree } from '../utils/render.js';
 import { listProjects, findProjectById } from '../core/registry.js';
+import { gitAutoCommit } from '../core/git.js';
+import type { Edge } from '../types/index.js';
 
 async function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
@@ -58,7 +71,7 @@ export async function handleApiRequest(
   if (method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     });
     res.end();
@@ -109,6 +122,7 @@ export async function handleApiRequest(
         if (key in body) updates[key] = body[key];
       }
       updateNodeFields(nodeId, updates as Parameters<typeof updateNodeFields>[1], dtRoot);
+      gitAutoCommit(dtRoot, `update ${nodeId} frontmatter`);
       json(res, { ok: true });
       return true;
     }
@@ -123,7 +137,245 @@ export async function handleApiRequest(
       const body = await parseBody(req);
       if (typeof body.content !== 'string') { error(res, 'content 字段必须为字符串'); return true; }
       updateNodeContent(nodeId, body.content, dtRoot);
+      gitAutoCommit(dtRoot, `update ${nodeId} content`);
       json(res, { ok: true });
+      return true;
+    }
+
+    // POST /api/projects/:id/nodes  创建节点
+    const projectNodesMatch = pathname.match(/^\/api\/projects\/([^/]+)\/nodes$/);
+    if (method === 'POST' && projectNodesMatch) {
+      const projectId = projectNodesMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const body = await parseBody(req);
+      const type = typeof body.type === 'string' && body.type.trim() ? body.type : 'subproblem';
+      const title = typeof body.title === 'string' ? body.title : '';
+      if (!title.trim()) { error(res, 'title 字段必填'); return true; }
+      const summary = typeof body.summary === 'string' ? body.summary : '';
+      const root = body.root === true;
+      const fromsRaw = Array.isArray(body.froms) ? body.froms : [];
+      const froms: string[] = [];
+      for (const v of fromsRaw) {
+        if (typeof v === 'string' && v.trim()) froms.push(v.trim());
+      }
+      if (!root && froms.length === 0) {
+        error(res, '非 root 节点必须提供 froms[] 或将 root=true');
+        return true;
+      }
+      // 验证父节点存在（仅本项目节点验证；跨项目交给 createNode 抛错）
+      for (const f of froms) {
+        if (!f.includes('::') && !nodeExists(f, dtRoot)) {
+          error(res, `父节点 ${f} 不存在`, 400);
+          return true;
+        }
+      }
+      const fromSummariesRaw = Array.isArray(body.fromSummaries) ? body.fromSummaries : [];
+      const fromSummaries = fromSummariesRaw.map((s) => (typeof s === 'string' ? s : ''));
+      const id = createNode({
+        type,
+        title,
+        summary,
+        froms,
+        fromSummaries,
+        root,
+        dtRoot,
+      });
+      gitAutoCommit(dtRoot, `add ${type} ${id}: ${title}`);
+      json(res, { ok: true, id }, 201);
+      return true;
+    }
+
+    // DELETE /api/projects/:id/nodes/:nid  删除节点
+    const projectDeleteNodeMatch = pathname.match(/^\/api\/projects\/([^/]+)\/nodes\/([^/]+)$/);
+    if (method === 'DELETE' && projectDeleteNodeMatch) {
+      const [, projectId, nodeId] = projectDeleteNodeMatch;
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      if (!nodeExists(nodeId, dtRoot)) { error(res, `节点 ${nodeId} 不存在`, 404); return true; }
+      deleteNode(nodeId, dtRoot);
+      gitAutoCommit(dtRoot, `delete node ${nodeId}`);
+      json(res, { ok: true });
+      return true;
+    }
+
+    // POST /api/projects/:id/edges  添加边
+    const projectEdgesMatch = pathname.match(/^\/api\/projects\/([^/]+)\/edges$/);
+    if (method === 'POST' && projectEdgesMatch) {
+      const projectId = projectEdgesMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const body = await parseBody(req);
+      const source = typeof body.source === 'string' ? body.source : '';
+      const target = typeof body.target === 'string' ? body.target : '';
+      const type = body.type === 'from' ? 'from' : body.type === 'to' ? 'to' : null;
+      const summary = typeof body.summary === 'string' ? body.summary : '';
+      if (!source || !target || !type) {
+        error(res, 'source / target / type(from|to) 必填');
+        return true;
+      }
+      if (!nodeExists(source, dtRoot)) { error(res, `源节点 ${source} 不存在`, 404); return true; }
+      if (!target.includes('::') && !nodeExists(target, dtRoot)) {
+        error(res, `目标节点 ${target} 不存在`, 404); return true;
+      }
+      if (source === target) { error(res, '不能连接到自身'); return true; }
+      const edge: Edge = { target, type, summary };
+      addEdgeBidirectional(source, edge, dtRoot);
+      gitAutoCommit(dtRoot, `link ${source} ${type === 'to' ? '→' : '←'} ${target}`);
+      json(res, { ok: true });
+      return true;
+    }
+
+    // DELETE /api/projects/:id/edges  删除边（参数走 query 或 body）
+    if (method === 'DELETE' && projectEdgesMatch) {
+      const projectId = projectEdgesMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const qs = url.searchParams;
+      const body = await parseBody(req);
+      const source = qs.get('source') ?? (typeof body.source === 'string' ? body.source : '');
+      const target = qs.get('target') ?? (typeof body.target === 'string' ? body.target : '');
+      const typeRaw = qs.get('type') ?? (typeof body.type === 'string' ? body.type : '');
+      const type: Edge['type'] | undefined =
+        typeRaw === 'from' ? 'from' : typeRaw === 'to' ? 'to' : undefined;
+      if (!source || !target) { error(res, 'source 与 target 必填'); return true; }
+      if (!nodeExists(source, dtRoot)) { error(res, `源节点 ${source} 不存在`, 404); return true; }
+      removeEdgeBidirectional(source, target, type, dtRoot);
+      gitAutoCommit(dtRoot, `unlink ${source} ⇿ ${target}`);
+      json(res, { ok: true });
+      return true;
+    }
+
+    // PATCH /api/projects/:id/edges  改边 summary（不删边）
+    if (method === 'PATCH' && projectEdgesMatch) {
+      const projectId = projectEdgesMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const body = await parseBody(req);
+      const source = typeof body.source === 'string' ? body.source : '';
+      const target = typeof body.target === 'string' ? body.target : '';
+      const typeRaw = typeof body.type === 'string' ? body.type : '';
+      const type: Edge['type'] | undefined =
+        typeRaw === 'from' ? 'from' : typeRaw === 'to' ? 'to' : undefined;
+      const summary = typeof body.summary === 'string' ? body.summary : '';
+      if (!source || !target) { error(res, 'source 与 target 必填'); return true; }
+      if (!nodeExists(source, dtRoot)) { error(res, `源节点 ${source} 不存在`, 404); return true; }
+      updateEdgeSummaryBidirectional(source, target, type, summary, dtRoot);
+      gitAutoCommit(dtRoot, `edit edge ${source}↔${target} summary`);
+      json(res, { ok: true });
+      return true;
+    }
+
+    // POST /api/projects/:id/export  导出节点子集 + 内部边
+    const projectExportMatch = pathname.match(/^\/api\/projects\/([^/]+)\/export$/);
+    if (method === 'POST' && projectExportMatch) {
+      const projectId = projectExportMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const body = await parseBody(req);
+      const idsRaw = Array.isArray(body.nodeIds) ? body.nodeIds : [];
+      const ids: string[] = [];
+      for (const v of idsRaw) {
+        if (typeof v === 'string' && nodeExists(v, dtRoot)) ids.push(v);
+      }
+      if (ids.length === 0) { error(res, 'nodeIds 必须为非空字符串数组'); return true; }
+      const idSet = new Set(ids);
+      const exportedNodes = ids.map((id) => {
+        const n = readNode(id, dtRoot);
+        return { ...n.frontmatter, content: n.content };
+      });
+      // 只保留 source 与 target 都在导出集合内的边（用 'to' 边作为权威方向，去重）
+      const internalEdges: Array<{ source: string; target: string; type: 'to'; summary: string }> = [];
+      const seen = new Set<string>();
+      for (const node of exportedNodes) {
+        for (const e of (node.edges ?? []) as Edge[]) {
+          if (e.target.includes('::')) continue;
+          if (!idSet.has(e.target)) continue;
+          let s = node.id, t = e.target;
+          if (e.type === 'from') { s = e.target; t = node.id; }
+          const key = `${s}→${t}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          internalEdges.push({ source: s, target: t, type: 'to', summary: e.summary ?? '' });
+        }
+      }
+      const config = readTreeConfig(dtRoot);
+      const bundle = {
+        format: 'dt-bundle/v1',
+        source: { id: projectId, name: config.project },
+        exportedAt: new Date().toISOString(),
+        nodes: exportedNodes.map((n) => ({
+          id: n.id,
+          root: n.root ?? false,
+          title: n.title,
+          summary: n.summary ?? '',
+          type: n.type,
+          status: n.status,
+          content: n.content,
+          created: n.created,
+        })),
+        internalEdges,
+      };
+      json(res, bundle);
+      return true;
+    }
+
+    // POST /api/projects/:id/import  导入 bundle，分配新 ID 并重建内部边
+    const projectImportMatch = pathname.match(/^\/api\/projects\/([^/]+)\/import$/);
+    if (method === 'POST' && projectImportMatch) {
+      const projectId = projectImportMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const body = await parseBody(req);
+      const bundle = body as Record<string, unknown>;
+      if (bundle.format !== 'dt-bundle/v1') { error(res, '不支持的 bundle 格式（需 dt-bundle/v1）'); return true; }
+      const nodes = Array.isArray(bundle.nodes) ? bundle.nodes : [];
+      const internalEdges = Array.isArray(bundle.internalEdges) ? bundle.internalEdges : [];
+      if (nodes.length === 0) { error(res, 'bundle.nodes 为空'); return true; }
+      // 第一遍：分配新 ID（不带 from），后续再写入边
+      const idMap = new Map<string, string>();
+      const createdIds: string[] = [];
+      try {
+        for (const raw of nodes) {
+          const n = raw as Record<string, unknown>;
+          const oldId = typeof n.id === 'string' ? n.id : null;
+          const title = typeof n.title === 'string' ? n.title : '(untitled)';
+          const type = typeof n.type === 'string' ? n.type : 'subproblem';
+          const summary = typeof n.summary === 'string' ? n.summary : '';
+          const isRoot = n.root === true;
+          const content = typeof n.content === 'string' ? n.content : '';
+          if (!oldId) continue;
+          const newId = createNode({
+            type, title, summary, root: isRoot, content, dtRoot,
+          });
+          idMap.set(oldId, newId);
+          createdIds.push(newId);
+          // 应用 status（createNode 默认 pending）
+          if (typeof n.status === 'string' && n.status !== 'pending') {
+            updateNodeFields(newId, { status: n.status as Parameters<typeof updateNodeFields>[1]['status'] }, dtRoot);
+          }
+        }
+        // 第二遍：重建内部边
+        for (const e of internalEdges) {
+          const er = e as Record<string, unknown>;
+          const s = typeof er.source === 'string' ? idMap.get(er.source) : undefined;
+          const t = typeof er.target === 'string' ? idMap.get(er.target) : undefined;
+          const summary = typeof er.summary === 'string' ? er.summary : '';
+          if (!s || !t || s === t) continue;
+          addEdgeBidirectional(s, { target: t, type: 'to', summary }, dtRoot);
+        }
+      } catch (err) {
+        // 失败时回滚已创建的节点
+        for (const id of createdIds) {
+          try { deleteNode(id, dtRoot); } catch { /* ignore */ }
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        error(res, `导入失败: ${message}`, 500);
+        return true;
+      }
+      gitAutoCommit(dtRoot, `import bundle: ${createdIds.length} nodes`);
+      const idMapping = Array.from(idMap.entries()).map(([from, to]) => ({ from, to }));
+      json(res, { ok: true, imported: createdIds.length, idMapping }, 201);
       return true;
     }
 

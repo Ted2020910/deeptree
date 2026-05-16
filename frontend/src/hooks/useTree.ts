@@ -74,5 +74,69 @@ export function useTree(projectId: string) {
     [projectId, fetchTree],
   )
 
-  return { data, loading, error, refresh: fetchTree, updateFrontmatter, updateContent }
+  async function jsonFetch(url: string, init: RequestInit) {
+    const res = await fetch(url, init)
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`${res.status}: ${text || res.statusText}`)
+    }
+    return res.status === 204 ? null : res.json()
+  }
+
+  const createNode = useCallback(
+    async (input: { type: string; title: string; summary?: string; froms?: string[]; root?: boolean }): Promise<string> => {
+      const data = await jsonFetch(`/api/projects/${projectId}/nodes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }) as { id: string }
+      await fetchTree()
+      return data.id
+    },
+    [projectId, fetchTree],
+  )
+
+  const deleteNode = useCallback(
+    async (id: string) => {
+      await jsonFetch(`/api/projects/${projectId}/nodes/${id}`, { method: 'DELETE' })
+      await fetchTree()
+    },
+    [projectId, fetchTree],
+  )
+
+  const createEdge = useCallback(
+    async (input: { source: string; target: string; type: 'from' | 'to'; summary?: string }) => {
+      await jsonFetch(`/api/projects/${projectId}/edges`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      await fetchTree()
+    },
+    [projectId, fetchTree],
+  )
+
+  const deleteEdge = useCallback(
+    async (input: { source: string; target: string; type?: 'from' | 'to' }) => {
+      const qs = new URLSearchParams({ source: input.source, target: input.target })
+      if (input.type) qs.set('type', input.type)
+      await jsonFetch(`/api/projects/${projectId}/edges?${qs.toString()}`, { method: 'DELETE' })
+      await fetchTree()
+    },
+    [projectId, fetchTree],
+  )
+
+  const updateEdge = useCallback(
+    async (input: { source: string; target: string; type?: 'from' | 'to'; summary: string }) => {
+      await jsonFetch(`/api/projects/${projectId}/edges`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      await fetchTree()
+    },
+    [projectId, fetchTree],
+  )
+
+  return { data, loading, error, refresh: fetchTree, updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, updateEdge }
 }

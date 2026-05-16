@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ReactFlow,
   Controls,
@@ -6,11 +6,13 @@ import {
   useNodesState,
   useEdgesState,
   type NodeMouseHandler,
+  type EdgeMouseHandler,
   type OnNodeDrag,
+  type OnConnect,
 } from '@xyflow/react'
 import Dagre from '@dagrejs/dagre'
 import type { DtNode } from '../types'
-import { NodeCard, type DtFlowNode } from './NodeCard'
+import { NodeCard, type DtFlowNode, type DtFlowNodeData, type NodeCardActions } from './NodeCard'
 import { CustomEdge, type DtFlowEdge } from './CustomEdge'
 import { DotWaveBackground } from './DotWaveBackground'
 
@@ -18,16 +20,12 @@ const nodeTypes = { dtNode: NodeCard }
 const edgeTypes = { dtEdge: CustomEdge }
 
 const NODE_W = 280
-const NODE_H = 88
+const NODE_H = 96
 
 function getEdgeColor(): string {
-  return getComputedStyle(document.documentElement).getPropertyValue('--edge-color').trim() || '#888888'
+  return getComputedStyle(document.documentElement).getPropertyValue('--edge-color').trim() || '#94A3B8'
 }
 
-/**
- * 用 Dagre 计算全局布局，返回每个节点的位置 map。
- * 通过 edges type=to 建图（父→子），保证层级结构正确。
- */
 function computeLayout(dtNodes: DtNode[]): Map<string, { x: number; y: number }> {
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
   g.setGraph({ rankdir: 'TB', ranksep: 80, nodesep: 48, marginx: 64, marginy: 64 })
@@ -59,7 +57,13 @@ function computeLayout(dtNodes: DtNode[]): Map<string, { x: number; y: number }>
   return posMap
 }
 
-function buildEdges(dtNodes: DtNode[]): DtFlowEdge[] {
+function buildEdges(
+  dtNodes: DtNode[],
+  onCommitSummary?: (source: string, target: string, summary: string) => void,
+  onRequestDelete?: (source: string, target: string) => void,
+  editingEdgeKey?: string | null,
+  onEditClose?: () => void,
+): DtFlowEdge[] {
   const rfEdges: DtFlowEdge[] = []
   const edgeSet = new Set<string>()
   const markerColor = getEdgeColor()
@@ -76,7 +80,18 @@ function buildEdges(dtNodes: DtNode[]): DtFlowEdge[] {
             source: n.id,
             target: e.target,
             type: 'dtEdge',
-            data: { edgeType: 'parent', summary: e.summary },
+            data: {
+              edgeType: 'parent',
+              summary: e.summary,
+              onCommitSummary: onCommitSummary
+                ? (next: string) => onCommitSummary(n.id, e.target, next)
+                : undefined,
+              onRequestDelete: onRequestDelete
+                ? () => onRequestDelete(n.id, e.target)
+                : undefined,
+              externalEdit: editingEdgeKey === key,
+              onEditClose,
+            },
             markerEnd: {
               type: MarkerType.ArrowClosed,
               color: markerColor,
@@ -95,33 +110,33 @@ function buildEdges(dtNodes: DtNode[]): DtFlowEdge[] {
 interface DtCanvasProps {
   dtNodes: DtNode[]
   selectedId: string | null
-  onSelect: (id: string | null) => void
-  /** 外部触发"一键整理"布局（每次值变化就重新布局） */
+  multiSelected?: Set<string>
+  onSelect: (id: string | null, additive: boolean) => void
   layoutTrigger?: number
+  onConnect?: (source: string, target: string) => void
+  onDeleteEdge?: (source: string, target: string) => void
+  onCommitEdgeSummary?: (source: string, target: string, summary: string) => void
+  onAddRoot?: () => void
+  nodeActions?: NodeCardActions
+  editingNodeId?: string | null
 }
 
-export function DtCanvas({ dtNodes, selectedId, onSelect, layoutTrigger }: DtCanvasProps) {
+export function DtCanvas({
+  dtNodes, selectedId, multiSelected, onSelect, layoutTrigger,
+  onConnect, onDeleteEdge, onCommitEdgeSummary, onAddRoot, nodeActions, editingNodeId,
+}: DtCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<DtFlowNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<DtFlowEdge>([])
+  const [editingEdgeKey, setEditingEdgeKey] = useState<string | null>(null)
 
-  /**
-   * 位置存储策略（两层）：
-   * - layoutPositions：Dagre 计算的布局位置（首次加载或新节点时更新）
-   * - userPositions：用户拖拽后的位置（drag 结束时记录，优先级最高）
-   *
-   * 内容更新（WS 推送 status/summary 变化）时不重算布局，
-   * 直接复用已有位置，避免画布重置。
-   */
   const layoutPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
   const userPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
   const prevNodeIds = useRef<Set<string>>(new Set())
 
-  // 只在 drag 结束时记录位置，不拦截 ReactFlow 内部的 position 事件
   const onNodeDragStop: OnNodeDrag<DtFlowNode> = useCallback((_event, node) => {
     userPositions.current.set(node.id, node.position)
   }, [])
 
-  // 一键整理：清空 userPositions，强制重算 Dagre 布局
   useEffect(() => {
     if (layoutTrigger === undefined || prevNodeIds.current.size === 0) return
     userPositions.current.clear()
@@ -134,7 +149,8 @@ export function DtCanvas({ dtNodes, selectedId, onSelect, layoutTrigger }: DtCan
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layoutTrigger])
 
-  // 数据变化时更新节点
+  const handleEdgeEditClose = useCallback(() => setEditingEdgeKey(null), [])
+
   useEffect(() => {
     if (dtNodes.length === 0) {
       setNodes([])
@@ -150,18 +166,15 @@ export function DtCanvas({ dtNodes, selectedId, onSelect, layoutTrigger }: DtCan
     const hasNewNodes = dtNodes.some(n => !prevNodeIds.current.has(n.id))
     const hasRemovedNodes = [...prevNodeIds.current].some(id => !currentIds.has(id))
 
-    // 首次加载或有新节点时重算布局
     if (isFirstLoad || hasNewNodes) {
       const posMap = computeLayout(dtNodes)
       posMap.forEach((pos, id) => {
-        // 已有节点保留旧布局位置，只给新节点赋值
         if (isFirstLoad || !prevNodeIds.current.has(id)) {
           layoutPositions.current.set(id, pos)
         }
       })
     }
 
-    // 清理已删除节点的缓存
     if (hasRemovedNodes) {
       prevNodeIds.current.forEach(id => {
         if (!currentIds.has(id)) {
@@ -171,33 +184,66 @@ export function DtCanvas({ dtNodes, selectedId, onSelect, layoutTrigger }: DtCan
       })
     }
 
-    // 位置优先级：用户拖拽 > Dagre 布局
     const rfNodes: DtFlowNode[] = dtNodes.map(n => ({
       id: n.id,
       type: 'dtNode' as const,
       position: userPositions.current.get(n.id)
         ?? layoutPositions.current.get(n.id)
         ?? { x: 0, y: 0 },
-      data: n,
+      data: { ...n, __actions: nodeActions, __editing: editingNodeId === n.id } as DtFlowNodeData,
     }))
 
     prevNodeIds.current = currentIds
     setNodes(rfNodes)
-    setEdges(buildEdges(dtNodes))
-  }, [dtNodes, setNodes, setEdges])
+    setEdges(buildEdges(dtNodes, onCommitEdgeSummary, onDeleteEdge, editingEdgeKey, handleEdgeEditClose))
+  }, [dtNodes, setNodes, setEdges, onCommitEdgeSummary, onDeleteEdge, editingEdgeKey, handleEdgeEditClose])
+
+  // Re-inject actions / editing flags without rebuilding layout
+  useEffect(() => {
+    setNodes(prev => prev.map(n => ({
+      ...n,
+      data: { ...n.data, __actions: nodeActions, __editing: editingNodeId === n.id } as DtFlowNodeData,
+    })))
+  }, [nodeActions, editingNodeId, setNodes])
+
+  // Re-inject edge editing state without rebuilding layout
+  useEffect(() => {
+    setEdges(prev => prev.map(e => ({
+      ...e,
+      data: e.data ? {
+        ...e.data,
+        externalEdit: editingEdgeKey === e.id,
+        onEditClose: handleEdgeEditClose,
+      } : e.data,
+    })))
+  }, [editingEdgeKey, handleEdgeEditClose, setEdges])
 
   const onNodeClick: NodeMouseHandler<DtFlowNode> = useCallback(
-    (_, node) => onSelect(node.id),
+    (event, node) => onSelect(node.id, event.ctrlKey || event.metaKey || event.shiftKey),
     [onSelect],
   )
 
-  const onPaneClick = useCallback(() => onSelect(null), [onSelect])
+  const onPaneClick = useCallback(() => onSelect(null, false), [onSelect])
+
+  const handleConnect: OnConnect = useCallback((c) => {
+    if (!onConnect || !c.source || !c.target || c.source === c.target) return
+    onConnect(c.source, c.target)
+  }, [onConnect])
+
+  // 双击连线 → 进入摘要编辑（不再删除）
+  const onEdgeDoubleClick: EdgeMouseHandler = useCallback((_e, edge) => {
+    setEditingEdgeKey(edge.id)
+  }, [])
 
   return (
     <div className="canvas-wrap">
       <DotWaveBackground />
       <ReactFlow
-        nodes={nodes.map(n => ({ ...n, selected: n.id === selectedId }))}
+        nodes={nodes.map(n => ({
+          ...n,
+          selected: n.id === selectedId,
+          className: multiSelected?.has(n.id) ? 'dt-multi-selected' : undefined,
+        }))}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -206,12 +252,15 @@ export function DtCanvas({ dtNodes, selectedId, onSelect, layoutTrigger }: DtCan
         onNodeClick={onNodeClick}
         onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
+        onConnect={handleConnect}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         fitView
         fitViewOptions={{ padding: 0.15 }}
         minZoom={0.2}
         maxZoom={2}
         nodesDraggable
         elementsSelectable
+        connectionRadius={32}
       >
         <Controls showInteractive={false} />
       </ReactFlow>
@@ -220,8 +269,24 @@ export function DtCanvas({ dtNodes, selectedId, onSelect, layoutTrigger }: DtCan
         <div className="canvas-empty">
           <span className="canvas-empty__logo">dt<span className="accent-dot">·</span></span>
           <span className="canvas-empty__title">AWAITING INPUT</span>
-          <span className="canvas-empty__cmd"><span>&gt;</span> dt add goal "..." --root</span>
+          {onAddRoot ? (
+            <button className="btn-technical" onClick={onAddRoot}>
+              <span className="btn-technical__icon">＋</span> 创建根节点
+            </button>
+          ) : (
+            <span className="canvas-empty__cmd"><span>&gt;</span> dt add goal "..." --root</span>
+          )}
         </div>
+      )}
+
+      {dtNodes.length > 0 && onAddRoot && (
+        <button
+          className="btn-technical canvas-add-root"
+          onClick={onAddRoot}
+          title="新增根节点"
+        >
+          <span className="btn-technical__icon">＋</span> 根节点
+        </button>
       )}
     </div>
   )
