@@ -337,12 +337,14 @@ export function registerUpgradeCommand(program: Command): void {
           }
         }
       } catch (err: unknown) {
-        console.error(chalk.red('✗ git pull 失败'));
+        console.log(chalk.yellow('⚠ git pull 失败（跳过 CLI 更新）'));
         if (err instanceof Error && 'stderr' in err) {
-          console.error(chalk.dim(`  ${(err as { stderr: string }).stderr}`));
+          const stderr = (err as { stderr: string }).stderr.trim();
+          if (stderr) {
+            console.log(chalk.dim(`  ${stderr}`));
+          }
         }
-        console.error(chalk.dim('  请检查网络连接和 git 配置'));
-        process.exit(1);
+        console.log(chalk.dim('  请检查网络连接和 git 配置'));
       }
 
       // ─── Part 2: 项目内升级 ────────────────────────────────────

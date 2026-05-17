@@ -22,9 +22,10 @@ interface DetailPanelProps {
   collapsed?: boolean
   onToggleCollapse?: () => void
   onSelectNode?: (id: string) => void
+  width?: number
 }
 
-export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollapse, onSelectNode }: DetailPanelProps) {
+export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollapse, onSelectNode, width }: DetailPanelProps) {
   const [title, setTitle] = useState(node.title)
   const [summary, setSummary] = useState(node.summary)
   const [content, setContent] = useState(node.content)
@@ -34,7 +35,12 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
   const [saveStatus, setSaveStatus] = useState('')
   const [dirty, setDirty] = useState(false)
   const [adding, setAdding] = useState(false)
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const suppressRef = useRef(0) // suppress sync until this timestamp
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const prevNodeIdRef = useRef(node.id)
 
+  // When switching to a different node: unconditionally reset
   useEffect(() => {
     setTitle(node.title)
     setSummary(node.summary)
@@ -44,27 +50,64 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
     setEditingContent(false)
     setDirty(false)
     setSaveStatus('')
-  }, [node.id, node.title, node.summary, node.content, node.type, node.status])
+    suppressRef.current = 0
+    clearTimeout(debounceRef.current)
+    prevNodeIdRef.current = node.id
+  }, [node.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const markDirty = () => { setDirty(true); setSaveStatus('') }
+  // External changes sync (e.g. another user or CLI edit on same node)
+  // Only applies when we have no local dirty edits and outside the suppress window
+  useEffect(() => {
+    if (prevNodeIdRef.current !== node.id) return // handled by node.id effect
+    if (Date.now() < suppressRef.current) return
+    if (dirty) return
+    setTitle(node.title)
+    setSummary(node.summary)
+    setContent(node.content)
+    setType(node.type)
+    setStatus(node.status)
+  }, [node.title, node.summary, node.content, node.type, node.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Auto-save with debounce ───
 
   const handleSave = useCallback(async () => {
     setSaveStatus('保存中…')
+    suppressRef.current = Date.now() + 2000 // suppress sync for 2s after save
     try {
       await saveFns.updateFrontmatter(node.id, { title, summary, type, status })
       await saveFns.updateContent(node.id, content)
-      setSaveStatus('已保存')
       setDirty(false)
+      setSaveStatus('已保存')
     } catch {
       setSaveStatus('保存失败')
     }
   }, [node.id, title, summary, type, status, content, saveFns])
 
+  function markDirtyAndScheduleSave() {
+    setDirty(true)
+    setSaveStatus('')
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      // handleSave is stale inside this closure, so we trigger save via a ref trick
+      saveNowRef.current?.()
+    }, 800)
+  }
+  // Keep a stable ref to the latest handleSave
+  const saveNowRef = useRef(handleSave)
+  useEffect(() => { saveNowRef.current = handleSave }, [handleSave])
+
+  // Cleanup debounce on unmount
+  useEffect(() => () => clearTimeout(debounceRef.current), [])
+
+  // Ctrl+S: immediate save
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's' && dirty) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        handleSave()
+        if (dirty) {
+          clearTimeout(debounceRef.current)
+          handleSave()
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -73,6 +116,13 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
 
   const renderedMd = marked.parse(content) as string
   const nodeById = (id: string) => allNodes.find(n => n.id === id)
+
+  // Auto-focus textarea when entering edit mode
+  useEffect(() => {
+    if (editingContent) {
+      requestAnimationFrame(() => contentTextareaRef.current?.focus())
+    }
+  }, [editingContent])
 
   const handleDeleteEdge = useCallback(async (target: string, type: 'from' | 'to') => {
     if (!confirm(`删除 ${node.id} ${EDGE_ARROW[type]} ${target} ？`)) return
@@ -92,7 +142,7 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
   }
 
   return (
-    <div className="detail-panel">
+    <div className="detail-panel" style={{ width: width ?? 400 }}>
       <button className="detail-panel__toggle" onClick={onToggleCollapse} title="折叠详情" aria-label="Collapse panel">‹</button>
 
       <div className="detail-panel__header">
@@ -103,14 +153,14 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
         <input
           className="detail-panel__title-input"
           value={title}
-          onChange={e => { setTitle(e.target.value); markDirty() }}
+          onChange={e => { setTitle(e.target.value); markDirtyAndScheduleSave() }}
           placeholder="节点标题"
         />
 
         <textarea
           className="detail-panel__summary-input"
           value={summary}
-          onChange={e => { setSummary(e.target.value); markDirty() }}
+          onChange={e => { setSummary(e.target.value); markDirtyAndScheduleSave() }}
           placeholder="一句话摘要"
           rows={2}
         />
@@ -119,7 +169,7 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
           <label className="field-chip">
             <input
               value={type}
-              onChange={e => { setType(e.target.value); markDirty() }}
+              onChange={e => { setType(e.target.value); markDirtyAndScheduleSave() }}
               style={{ width: 80 }}
             />
           </label>
@@ -127,7 +177,7 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLORS[status] }} />
             <select
               value={status}
-              onChange={e => { setStatus(e.target.value as DtNode['status']); markDirty() }}
+              onChange={e => { setStatus(e.target.value as DtNode['status']); markDirtyAndScheduleSave() }}
             >
               {STATUS_OPTIONS.map(s => (
                 <option key={s} value={s}>{s.replace('_', ' ')}</option>
@@ -203,22 +253,30 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
 
           {editingContent ? (
             <textarea
+              ref={contentTextareaRef}
               className="content-textarea"
               value={content}
-              onChange={e => { setContent(e.target.value); markDirty() }}
+              onChange={e => { setContent(e.target.value); markDirtyAndScheduleSave() }}
               spellCheck={false}
               rows={16}
             />
           ) : (
-            <div className="md-content" dangerouslySetInnerHTML={{ __html: renderedMd }} />
+            <div
+              className="md-content"
+              dangerouslySetInnerHTML={{ __html: renderedMd }}
+              onDoubleClick={() => setEditingContent(true)}
+              title="双击编辑"
+            />
           )}
         </div>
       </div>
 
       <div className="detail-panel__footer">
-        <span className="save-status">{saveStatus}</span>
+        <span className="save-status">{dirty ? (saveStatus || '编辑中…') : saveStatus}</span>
         {dirty ? (
-          <button className="btn-primary" onClick={handleSave}>保存 (Ctrl+S)</button>
+          <button className="btn-ghost" onClick={() => { clearTimeout(debounceRef.current); handleSave() }}>
+            立即保存
+          </button>
         ) : <span />}
       </div>
     </div>

@@ -74,10 +74,41 @@ export default function App() {
   const [layoutTrigger, setLayoutTrigger] = useState(0)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('dt-panel-width')
+    return saved ? Math.max(280, Math.min(900, Number(saved))) : 400
+  })
   const [cmdkOpen, setCmdkOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { theme, toggle } = useTheme()
   const triggerLayout = useCallback(() => setLayoutTrigger(n => n + 1), [])
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const panel = (e.currentTarget as HTMLElement).nextElementSibling as HTMLElement | null
+    if (!panel) return
+    const startW = panel.getBoundingClientRect().width
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    panel.style.transition = 'none'
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.max(280, Math.min(900, startW + (startX - ev.clientX)))
+      panel.style.width = `${next}px`
+    }
+    const onUp = () => {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      panel.style.transition = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      const finalW = Math.round(panel.getBoundingClientRect().width)
+      setPanelWidth(finalW)
+      localStorage.setItem('dt-panel-width', String(finalW))
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [])
 
   useEffect(() => {
     if (projects.length > 0 && !currentProjectId) {
@@ -447,14 +478,18 @@ export default function App() {
           onAddRoot={handleAddRoot}
         />
         {selectedNode && (
-          <DetailPanel
-            node={selectedNode}
-            allNodes={nodes}
-            collapsed={panelCollapsed}
-            onToggleCollapse={() => setPanelCollapsed(c => !c)}
-            saveFns={{ updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, updateEdge }}
-            onSelectNode={(id) => handleSelect(id, false)}
-          />
+          <>
+            <div className="resize-handle" onMouseDown={handleResizeStart} />
+            <DetailPanel
+              node={selectedNode}
+              allNodes={nodes}
+              collapsed={panelCollapsed}
+              onToggleCollapse={() => setPanelCollapsed(c => !c)}
+              saveFns={{ updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, updateEdge }}
+              onSelectNode={(id) => handleSelect(id, false)}
+              width={panelWidth}
+            />
+          </>
         )}
       </div>
 
