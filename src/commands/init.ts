@@ -218,7 +218,7 @@ export function registerInitCommand(program: Command): void {
       console.log(chalk.green('✓ 决策树项目已初始化'));
       console.log('');
       console.log(`  项目: ${chalk.bold(name)}`);
-      console.log(chalk.dim(`  已创建 5 个写作风格说明节点（运行 \`dt show style-001\` 查看）`));
+      console.log(chalk.dim(`  已创建 5 个写作风格说明节点（运行 \`dt style\` 查看）`));
       console.log('');
     });
 }

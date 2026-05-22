@@ -22,6 +22,7 @@ const STATUS_ICON: Record<NodeStatus, string> = {
 export interface TreeRenderNode {
   id: string;
   label: string;
+  summary?: string;
   type: string;
   status: NodeStatus;
   children: TreeRenderNode[];
@@ -84,6 +85,7 @@ export function buildForest(nodes: NodeFile[]): TreeRenderNode[] {
     return {
       id: fm.id,
       label,
+      summary: fm.summary,
       type: fm.type,
       status: fm.status,
       multiParent: (parentCount.get(id) ?? 0) > 1,
@@ -128,11 +130,18 @@ export function renderTree(
 
   if (isRoot) {
     lines.push(`${icon} ${chalk.bold(node.id)} ${typeTag} ${node.label}${multiTag}`);
+    if (node.summary) {
+      lines.push(chalk.dim(`   ${node.summary}`));
+    }
   } else {
     const connector = isLast ? '└── ' : '├── ';
     lines.push(
       `${prefix}${connector}${icon} ${chalk.bold(node.id)} ${typeTag} ${node.label}${multiTag}`,
     );
+    if (node.summary) {
+      const summaryPrefix = prefix + (isLast ? '    ' : '│   ');
+      lines.push(chalk.dim(`${summaryPrefix}   ${node.summary}`));
+    }
   }
 
   const childPrefix = isRoot ? '' : prefix + (isLast ? '    ' : '│   ');

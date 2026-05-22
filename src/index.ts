@@ -27,6 +27,7 @@ import { registerProjectCommands } from './commands/register.js';
 import { registerServeCommand } from './commands/serve.js';
 import { registerRemoteCommands } from './commands/remote.js';
 import { registerUpgradeCommand } from './commands/upgrade.js';
+import { registerStyleCommand } from './commands/style.js';
 
 const program = new Command();
 
@@ -49,5 +50,6 @@ registerServeCommand(program);
 registerProjectCommands(program);
 registerRemoteCommands(program);
 registerUpgradeCommand(program);
+registerStyleCommand(program);
 
 program.parse();
