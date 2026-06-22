@@ -174,6 +174,196 @@ body {
   overflow: hidden;
 }
 
+/* ─── Project Explorer ─── */
+.project-explorer {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.project-explorer__header {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-md);
+  border-bottom: 1px solid var(--border);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.project-explorer__header button,
+.project-explorer__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-disabled);
+  cursor: pointer;
+}
+
+.project-explorer__header button:hover,
+.project-explorer__actions button:hover {
+  border-color: var(--border-visible);
+  color: var(--text-display);
+  background: var(--surface-raised);
+}
+
+.project-explorer__toolbar {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+.project-explorer__toolbar button {
+  flex: 1;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  border: 1px solid var(--border-visible);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.project-explorer__toolbar button:hover {
+  color: var(--text-display);
+  border-color: var(--text-secondary);
+}
+
+.project-explorer__toolbar svg,
+.project-explorer__row svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.project-explorer__body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-xs) 0 var(--space-md);
+}
+
+.project-explorer__row {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-right: var(--space-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+
+.project-explorer__row:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.project-explorer__row--selected {
+  background: var(--surface-raised);
+  color: var(--text-display);
+  border-left-color: var(--interactive);
+}
+
+.project-explorer__row--dt .project-explorer__name {
+  color: var(--text-primary);
+}
+
+.project-explorer__twisty {
+  width: 16px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-disabled);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.project-explorer__twisty:disabled {
+  opacity: 0.35;
+}
+
+.project-explorer__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-disabled);
+  flex-shrink: 0;
+}
+
+.project-explorer__row--dt .project-explorer__icon {
+  color: var(--interactive);
+}
+
+.project-explorer__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-explorer__badge {
+  flex-shrink: 0;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--text-disabled);
+}
+
+.project-explorer__actions {
+  display: none;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.project-explorer__row:hover .project-explorer__actions {
+  display: inline-flex;
+}
+
+.project-explorer__actions svg {
+  width: 13px;
+  height: 13px;
+}
+
+.project-explorer__state {
+  padding: var(--space-md);
+  color: var(--text-disabled);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.project-explorer__state--error {
+  color: var(--accent);
+  word-break: break-word;
+  line-height: 1.5;
+}
+
 /* ─── Node card ─── */
 .node-card {
   width: 280px;
@@ -1243,12 +1433,15 @@ kbd {
 .node-card:hover .node-card__btn--right,
 .node-card--selected .node-card__btn--right  { transform: translateY(-50%) scale(1); }
 
-/* Canvas root-add float button */
-.canvas-add-root {
+/* Canvas quick-create float buttons */
+.canvas-add-actions {
   position: absolute;
   top: var(--space-md);
   right: var(--space-md);
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 /* Edge label edit state */

@@ -40,6 +40,7 @@ export function NodeCard({ data, selected }: NodeProps<DtFlowNode>) {
   const statusColor = STATUS_COLORS[data.status] ?? '#999999'
   const inCount  = data.edges.filter(e => e.type === 'from').length
   const outCount = data.edges.filter(e => e.type === 'to').length
+  const pathLabel = data.path ? data.path.split('/').slice(-2).join('/') : ''
 
   const [editing, setEditing] = useState<boolean>(!!data.__editing)
   const [draftTitle, setDraftTitle] = useState(data.title)
@@ -128,6 +129,12 @@ export function NodeCard({ data, selected }: NodeProps<DtFlowNode>) {
 
       {data.summary && !editing && (
         <div className="node-card__summary">{data.summary}</div>
+      )}
+
+      {pathLabel && !editing && (
+        <div className="node-card__summary" title={data.path} style={{ opacity: 0.65 }}>
+          @{pathLabel}
+        </div>
       )}
 
       <Handle type="source" position={Position.Bottom} />

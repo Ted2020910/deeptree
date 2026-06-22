@@ -8,6 +8,7 @@
 import { watchDirectory } from '../utils/watcher.js';
 import type { DtWebSocketServer, WsMessage } from './ws-server.js';
 import type { DtPaths } from '../core/project.js';
+import { getProjectRoot, syncNodeIndex } from '../core/node-index.js';
 
 interface WatcherHandle {
   close: () => Promise<void>;
@@ -51,12 +52,13 @@ export function startFileWatcher(
     : [{ projectId: '_default', paths: pathsOrList }];
 
   for (const { projectId, paths } of watchList) {
-    const watcher = watchDirectory(paths.nodes, '*.md');
+    const watcher = watchDirectory(getProjectRoot(paths.root), '*.md');
     watchers.push(watcher);
 
     const pid = projectId; // closure capture
     (async () => {
       for await (const _event of watcher.events) {
+        syncNodeIndex(paths.root, { full: true });
         notifyUpdate(pid);
       }
     })().catch(() => {

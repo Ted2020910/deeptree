@@ -5,8 +5,9 @@
  * Agent 不需要知道 git 的存在。
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import path from 'node:path';
+import { syncNodeIndex } from './node-index.js';
 
 /**
  * 检查是否在 git 仓库中
@@ -30,6 +31,19 @@ function getProjectDir(dtRoot: string): string {
   return path.dirname(dtRoot);
 }
 
+function getDtManagedPaths(dtRoot: string): string[] {
+  const paths = ['.dt/'];
+  try {
+    const sync = syncNodeIndex(dtRoot);
+    for (const entry of Object.values(sync.index.nodes)) {
+      paths.push(entry.path);
+    }
+  } catch {
+    // 索引不可读时至少保留 .dt/ 行为
+  }
+  return Array.from(new Set(paths));
+}
+
 /**
  * dt 写操作后自动 commit
  * 静默处理：非 git 仓库或无变更时不报错
@@ -39,15 +53,16 @@ export function gitAutoCommit(dtRoot: string, message: string): void {
   if (!isGitRepo(projectDir)) return;
 
   try {
-    // 先 add .dt/ 目录
-    execSync('git add .dt/', {
+    const managedPaths = getDtManagedPaths(dtRoot);
+
+    execFileSync('git', ['add', '--', ...managedPaths], {
       cwd: projectDir,
       stdio: 'pipe',
     });
 
     // 检查是否有 staged changes
     try {
-      execSync('git diff --cached --quiet .dt/', {
+      execFileSync('git', ['diff', '--cached', '--quiet', '--', ...managedPaths], {
         cwd: projectDir,
         stdio: 'pipe',
       });
@@ -67,7 +82,7 @@ export function gitAutoCommit(dtRoot: string, message: string): void {
 }
 
 /**
- * 检测 .dt/ 下未提交的变更（= 人类编辑）
+ * 检测 dt 管理文件下未提交的变更（= 人类编辑）
  * @returns 变更文件列表，无变更返回 null
  */
 export function gitDetectChanges(dtRoot: string): string[] | null {
@@ -75,18 +90,24 @@ export function gitDetectChanges(dtRoot: string): string[] | null {
   if (!isGitRepo(projectDir)) return null;
 
   try {
-    const output = execSync('git diff --name-only .dt/', {
+    syncNodeIndex(dtRoot, { full: true });
+    const managedPaths = getDtManagedPaths(dtRoot);
+    const output = execFileSync('git', ['diff', '--name-only', '--', ...managedPaths], {
       cwd: projectDir,
       stdio: 'pipe',
       encoding: 'utf-8',
     }).trim();
 
     // 也检查 untracked 文件
-    const untracked = execSync('git ls-files --others --exclude-standard .dt/', {
+    const untracked = execFileSync(
+      'git',
+      ['ls-files', '--others', '--exclude-standard', '--', ...managedPaths],
+      {
       cwd: projectDir,
       stdio: 'pipe',
       encoding: 'utf-8',
-    }).trim();
+      },
+    ).trim();
 
     const files = [
       ...output.split('\n').filter(Boolean),
@@ -109,7 +130,8 @@ export function gitCommitIfChanged(dtRoot: string): string[] | null {
 
   const projectDir = getProjectDir(dtRoot);
   try {
-    execSync('git add .dt/', {
+    const managedPaths = getDtManagedPaths(dtRoot);
+    execFileSync('git', ['add', '--', ...managedPaths], {
       cwd: projectDir,
       stdio: 'pipe',
     });

@@ -23,6 +23,7 @@ export interface TreeRenderNode {
   id: string;
   label: string;
   summary?: string;
+  path?: string;
   type: string;
   status: NodeStatus;
   children: TreeRenderNode[];
@@ -70,6 +71,7 @@ export function buildForest(nodes: NodeFile[]): TreeRenderNode[] {
         label: `${label} [循环引用]`,
         type: fm.type,
         status: fm.status,
+        path: node.path,
         children: [],
         multiParent: false,
       };
@@ -86,6 +88,7 @@ export function buildForest(nodes: NodeFile[]): TreeRenderNode[] {
       id: fm.id,
       label,
       summary: fm.summary,
+      path: node.path,
       type: fm.type,
       status: fm.status,
       multiParent: (parentCount.get(id) ?? 0) > 1,
@@ -133,6 +136,9 @@ export function renderTree(
     if (node.summary) {
       lines.push(chalk.dim(`   ${node.summary}`));
     }
+    if (node.path) {
+      lines.push(chalk.dim(`   @ ${node.path}`));
+    }
   } else {
     const connector = isLast ? '└── ' : '├── ';
     lines.push(
@@ -141,6 +147,10 @@ export function renderTree(
     if (node.summary) {
       const summaryPrefix = prefix + (isLast ? '    ' : '│   ');
       lines.push(chalk.dim(`${summaryPrefix}   ${node.summary}`));
+    }
+    if (node.path) {
+      const summaryPrefix = prefix + (isLast ? '    ' : '│   ');
+      lines.push(chalk.dim(`${summaryPrefix}   @ ${node.path}`));
     }
   }
 

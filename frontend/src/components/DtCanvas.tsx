@@ -117,13 +117,14 @@ interface DtCanvasProps {
   onDeleteEdge?: (source: string, target: string) => void
   onCommitEdgeSummary?: (source: string, target: string, summary: string) => void
   onAddRoot?: () => void
+  onAddNode?: () => void
   nodeActions?: NodeCardActions
   editingNodeId?: string | null
 }
 
 export function DtCanvas({
   dtNodes, selectedId, multiSelected, onSelect, layoutTrigger,
-  onConnect, onDeleteEdge, onCommitEdgeSummary, onAddRoot, nodeActions, editingNodeId,
+  onConnect, onDeleteEdge, onCommitEdgeSummary, onAddRoot, onAddNode, nodeActions, editingNodeId,
 }: DtCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<DtFlowNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<DtFlowEdge>([])
@@ -279,14 +280,27 @@ export function DtCanvas({
         </div>
       )}
 
-      {dtNodes.length > 0 && onAddRoot && (
-        <button
-          className="btn-technical canvas-add-root"
-          onClick={onAddRoot}
-          title="新增根节点"
-        >
-          <span className="btn-technical__icon">＋</span> 根节点
-        </button>
+      {dtNodes.length > 0 && (onAddRoot || onAddNode) && (
+        <div className="canvas-add-actions">
+          {onAddNode && (
+            <button
+              className="btn-technical"
+              onClick={onAddNode}
+              title="新增未挂接节点"
+            >
+              <span className="btn-technical__icon">＋</span> 节点
+            </button>
+          )}
+          {onAddRoot && (
+            <button
+              className="btn-technical"
+              onClick={onAddRoot}
+              title="新增根节点"
+            >
+              <span className="btn-technical__icon">＋</span> 根节点
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

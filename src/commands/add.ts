@@ -15,6 +15,9 @@ export function registerAddCommand(program: Command): void {
     .option('--from-depth <n>', '跨项目 from 边的拉取深度（可多次）', collectInt, [])
     .option('--summary <text>', '节点自身摘要')
     .option('--root', '标记为根节点')
+    .option('--path <path>', '节点 Markdown 文件路径（相对项目根目录；不传则写入 .dt/nodes/<id>.md）')
+    .option('--directory <dir>', '节点 Markdown 所在目录（相对项目根目录；与 --filename 搭配使用）')
+    .option('--filename <name>', '节点 Markdown 文件名（默认 <id>.md；仅在 --directory 生效时使用）')
     .action(
       (
         type: string,
@@ -25,6 +28,9 @@ export function registerAddCommand(program: Command): void {
           fromDepth: number[];
           summary?: string;
           root?: boolean;
+          path?: string;
+          directory?: string;
+          filename?: string;
         },
       ) => {
         const dtRoot = requireDtRoot();
@@ -46,6 +52,9 @@ export function registerAddCommand(program: Command): void {
           fromSummaries: opts.fromSummary,
           fromDepths: opts.fromDepth,
           root: opts.root ?? false,
+          path: opts.path,
+          directory: opts.directory,
+          filename: opts.filename,
           dtRoot,
         });
 
@@ -54,7 +63,12 @@ export function registerAddCommand(program: Command): void {
         const fromInfo = opts.from.length > 0
           ? ` (from: ${opts.from.join(', ')})`
           : opts.root ? ' (root)' : '';
-        console.log(chalk.green(`✓ 创建${type}节点 ${chalk.bold(id)}: ${title}${fromInfo}`));
+        const pathInfo = opts.path
+          ? chalk.dim(`\n  路径: ${opts.path}`)
+          : opts.directory
+            ? chalk.dim(`\n  目录: ${opts.directory}`)
+            : '';
+        console.log(chalk.green(`✓ 创建${type}节点 ${chalk.bold(id)}: ${title}${fromInfo}`) + pathInfo);
       },
     );
 }

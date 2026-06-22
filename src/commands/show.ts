@@ -5,7 +5,9 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
 import { readNode, nodeExists } from '../core/node.js';
+import { requireDtRoot } from '../core/project.js';
 import { isCrossRef } from '../types/index.js';
+import { syncNodeIndex } from '../core/node-index.js';
 import type { NodeStatus } from '../types/index.js';
 
 const STATUS_ICON: Record<NodeStatus, string> = {
@@ -22,6 +24,9 @@ export function registerShowCommand(program: Command): void {
     .description('查看节点详情')
     .argument('<id>', '节点 ID')
     .action((id: string) => {
+      const dtRoot = requireDtRoot();
+      syncNodeIndex(dtRoot, { full: true });
+
       if (!nodeExists(id)) {
         console.error(chalk.red(`✗ 节点 ${id} 不存在`));
         process.exit(1);
@@ -37,6 +42,7 @@ export function registerShowCommand(program: Command): void {
       console.log(chalk.dim('─'.repeat(60)));
 
       if (fm.summary) console.log(`  摘要: ${fm.summary}`);
+      if (node.path) console.log(`  路径: ${chalk.dim(node.path)}`);
 
       const fromEdges = (fm.edges ?? []).filter((e) => e.type === 'from');
       const toEdges = (fm.edges ?? []).filter((e) => e.type === 'to');

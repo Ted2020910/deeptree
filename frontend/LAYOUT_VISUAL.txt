@@ -1,0 +1,317 @@
+═══════════════════════════════════════════════════════════════════════════════
+                     DeepTree Frontend Layout Diagram
+═══════════════════════════════════════════════════════════════════════════════
+
+CURRENT STATE: FIXED-WIDTH SIDE-BY-SIDE LAYOUT
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ BROWSER WINDOW (Viewport)                                               ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃                                                                         ┃
+┃ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ ┃
+┃ ┃ #root (100dvh, flex-direction: column)                          ┃ ┃
+┃ ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫ ┃
+┃ ┃                                                                 ┃ ┃
+┃ ┃  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ┃ ┃
+┃ ┃  ┃ .app-header (height: 56px, flex-shrink: 0)             ┃  ┃ ┃
+┃ ┃  ┃ [dt· Logo] [Project] [Buttons] [Kbd] [Theme]           ┃  ┃ ┃
+┃ ┃  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ┃ ┃
+┃ ┃                                                                 ┃ ┃
+┃ ┃  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  ┃ ┃
+┃ ┃  ┃ .app-body (flex: 1, display: flex, overflow: hidden)   ┃  ┃ ┃
+┃ ┃  ┣━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┫  ┃ ┃
+┃ ┃  ┃                           ┃                          ┃  ┃ ┃
+┃ ┃  ┃ .canvas-wrap              ┃ .detail-panel           ┃  ┃ ┃
+┃ ┃  ┃ (flex: 1, shrinks)        ┃ (width: 400px,          ┃  ┃ ┃
+┃ ┃  ┃ position: relative        ┃  flex-shrink: 0)        ┃  ┃ ┃
+┃ ┃  ┃                           ┃                          ┃  ┃ ┃
+┃ ┃  ┃ ┏━━━━━━━━━━━━━━━━━━━━┓  ┃ ┏━━━━━━━━━━━━━━━━━┓  ┃  ┃ ┃
+┃ ┃  ┃ ┃ DotWaveBackground ┃  ┃ ┃ Header (sticky) ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┗━━━━━━━━━━━━━━━━━━━━┛  ┃ ┃ #id, title      ┃  ┃  ┃ ┃
+┃ ┃  ┃                           ┃ ┃ meta, status    ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┏━━━━━━━━━━━━━━━━━━━━┓  ┃ ┣━━━━━━━━━━━━━━━━━┫  ┃  ┃ ┃
+┃ ┃  ┃ ┃   ReactFlow        ┃  ┃ ┃ Body (scrollable) ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┃ ┌─────────┐ ┌─────┐ ┃  ┃ ┃                   ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┃ │ Node A  │ │Node│ ┃  ┃ ┃ Connections       ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┃ └────┬────┘ └──┬──┘ ┃  ┃ ┃ Content           ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┃      │ →  →    │    ┃  ┃ ┃                   ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┃ ┌────▼────┐ ┌──▼──┐ ┃  ┃ ┣━━━━━━━━━━━━━━━━━┫  ┃  ┃ ┃
+┃ ┃  ┃ ┃ │ Node C  │ │Node │ ┃  ┃ ┃ Footer (sticky) ┃  ┃  ┃ ┃
+┃ ┃  ┃ ┃ └─────────┘ └─────┘ ┃  ┃ ┃ [Save Status]   ┃  ┃  ┃ ┃
+┃ ┃  ┃ │ [Controls]          │  ┃ ┗━━━━━━━━━━━━━━━━━┛  ┃  ┃ ┃
+┃ ┃  ┃ └─────────────────────┘  ┃                          ┃  ┃ ┃
+┃ ┃  ┃                           ┃ ├─ Toggle Button      ┃  ┃ ┃
+┃ ┃  ┃ No scroll (everything     ┃ │  (›) to collapse   ┃  ┃ ┃
+┃ ┃  ┃ visible due to zoom)      ┃ │  positioned at     ┃  ┃ ┃
+┃ ┃  ┃                           ┃ │  left: -12px       ┃  ┃ ┃
+┃ ┃  ┃                           ┃                          ┃  ┃ ┃
+┃ ┃  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━┛  ┃ ┃
+┃ ┃                                                                 ┃ ┃
+┃ ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫ ┃
+┃ ┃ [CommandPalette] - overlay when open (z-index: 1000)           ┃ ┃
+┃ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ ┃
+┃                                                                         ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+SPACE BREAKDOWN (e.g., 1440px viewport)
+
+┌─────────────────────────────────────────────────────────────┐
+│ Header: 56px high                                           │ ← flex-shrink: 0
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Canvas (flex: 1)     │ Detail Panel (400px fixed)         │ ← app-body
+│  grows/shrinks        │ flex-shrink: 0                    │ ← flex-direction: row
+│                       │                                   │
+│  Available: 1440 - 400 = 1040px │ Locked: 400px         │
+│  (Responsive!)        │ (Never shrinks)                   │
+│                       │                                   │
+└───────────────────────┴───────────────────────────────────┘
+
+When panel collapsed (width: 44px):
+┌──────────────────────────────────────────────────────────────┐
+│ Canvas (flex: 1)                    │ Collapsed (44px fixed)  │
+│ grows/shrinks                       │ flex-shrink: 0         │
+│                                     │                        │
+│ Available: 1440 - 44 = 1396px       │ Locked: 44px           │
+│ (More responsive!)                  │ (Never shrinks)        │
+└──────────────────────────────────────┴────────────────────────┘
+
+
+FLEXBOX COMPUTATION
+
+.app-body {
+  display: flex;          /* Enables flexbox layout */
+  overflow: hidden;       /* Clips overflow */
+}
+
+Child 1: .canvas-wrap
+  flex: 1;                /* = flex-grow: 1, flex-shrink: 1, flex-basis: 0 */
+  position: relative;     /* Stacking context */
+  → Grows to fill remaining space
+  → Width = viewport - (header border) - detail-panel width
+  → Width = 100% - 400px (when panel visible)
+
+Child 2: .detail-panel (when rendered)
+  width: 400px;           /* Explicit width */
+  flex-shrink: 0;         /* Never shrinks */
+  → Always 400px
+  → Cannot be squeezed by flex-grow from canvas
+
+
+DETAIL PANEL INTERNAL STRUCTURE (Column Layout)
+
+.detail-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;       /* Clip overflow, prevent scrollbar on panel itself */
+  height: auto;           /* Takes full height of .app-body */
+  width: 400px;
+}
+
+├─ .detail-panel__header (flex-shrink: 0)
+│  ├─ .detail-panel__hero-id (# + number)
+│  ├─ .detail-panel__title-input (title field)
+│  ├─ .detail-panel__summary-input (summary field)
+│  └─ .detail-panel__meta (type + status)
+│
+├─ .detail-panel__body (flex: 1, overflow-y: auto)
+│  ├─ .detail-panel__edges (connections list)
+│  └─ .detail-panel__content-area (markdown content)
+│      └─ .content-textarea OR .md-content (rendered)
+│
+└─ .detail-panel__footer (flex-shrink: 0)
+   ├─ .save-status
+   └─ Save button (when dirty)
+
+Heights (when everything visible):
+header  + body         + footer   = Panel Height
+~60px   + remaining    + 40px     = 100% of app-body height
+        (flex: 1)
+
+
+PANEL COLLAPSE STATE
+
+Normal State:
+┌─────────────────┐
+│ # 123           │
+│ Title...        │
+│ Summary...      │
+│ TYPE | status ○ │
+├─────────────────┤
+│ Connections (3) │
+│ → #456 reason   │
+│ ← #789 role     │
+│                 │
+│ Content         │
+│ [Markdown text] │
+├─────────────────┤
+│ Saved           │
+└─────────────────┘
+Width: 400px
+Toggle: › (at left: -12px)
+
+Collapsed State (panelCollapsed === true):
+┌──────┐
+│ › ⁋  │
+│ #    │
+│ 1    │
+│ 2    │
+│ 3    │
+│      │
+└──────┘
+Width: 44px (!important)
+Toggle: ‹ (rotated)
+Only shows node ID vertically (writing-mode: vertical-rl)
+Header/Body/Footer hidden (display: none)
+
+CSS Applied:
+.detail-panel--collapsed {
+  width: 44px !important;
+  align-items: center;
+  padding-top: var(--space-md);
+}
+.detail-panel--collapsed .detail-panel__header,
+.detail-panel--collapsed .detail-panel__body,
+.detail-panel--collapsed .detail-panel__footer {
+  display: none;
+}
+
+Transition: width 200ms ease-out (smooth animation)
+
+
+RESPONSIVE BEHAVIOR
+
+Scenario 1: Large Monitor (2560px)
+┌────────────────────────────────────────┬──────────────────┐
+│ Canvas (2160px available)               │ Panel (400px)    │
+│ Plenty of room for node card display   │ Full detail view │
+└────────────────────────────────────────┴──────────────────┘
+
+Scenario 2: Medium Monitor (1440px - Current design target)
+┌──────────────────────────────────────┬──────────────────┐
+│ Canvas (1040px available)              │ Panel (400px)    │
+│ Good node card visibility             │ Full detail view │
+└──────────────────────────────────────┴──────────────────┘
+
+Scenario 3: Tablet (768px)
+┌──────────────────┬──────────────────┐
+│ Canvas (368px)   │ Panel (400px!)   │ ⚠️ Panel > Canvas!
+│ Squeezed nodes   │ Full detail view │
+└──────────────────┴──────────────────┘
+→ User would need to collapse panel to see canvas
+
+Scenario 4: Mobile (375px)
+┌─────┬──────────────────────────┐
+│ ??? │ Panel (400px!)           │ ⚠️⚠️ Overflow!
+└─────┴──────────────────────────┘
+→ Scroll required, poor UX
+→ Needs responsive redesign (panel below on mobile)
+
+
+STATE FLOW
+
+App.tsx:
+  selectedId (null | string)
+    ↓ (derived)
+  selectedNode = nodes.find(n => n.id === selectedId)
+    ↓
+  {selectedNode && <DetailPanel node={selectedNode} ... />}
+    ↓
+  DetailPanel renders only if node exists
+    ↓
+  [panelCollapsed] state controls width (400px ↔ 44px)
+
+Flow:
+User clicks node in canvas
+  ↓
+onSelect(nodeId, false) triggered
+  ↓
+setSelectedId(nodeId)
+  ↓
+React re-renders App
+  ↓
+selectedNode becomes node object
+  ↓
+DetailPanel mounts/renders
+  ↓
+Canvas resizes from flex: 1 (100%) to flex: 1 (remaining space)
+
+User clicks collapse toggle
+  ↓
+setPanelCollapsed(true)
+  ↓
+DetailPanel.__root gets .detail-panel--collapsed class
+  ↓
+width: 44px animation triggered
+  ↓
+DetailPanel shrinks, Canvas expands
+  ↓
+Panel content hidden (display: none)
+
+
+INTERACTION MODEL (No Resize Currently)
+
+User can:
+  ✓ Click node → Select & show DetailPanel (full 400px)
+  ✓ Click toggle → Collapse/Expand (400px ↔ 44px)
+  ✓ Scroll in DetailPanel body → Read content
+  ✓ Edit fields → Mark dirty & save on Ctrl+S
+  ✗ Drag resize handle → NO HANDLE EXISTS
+  ✗ Auto-save on change → NO DEBOUNCE, manual save only
+
+Future possibilities:
+  ? Add drag handle between canvas and panel
+  ? Store panel width in localStorage
+  ? Add auto-save with debounce
+  ? Add responsive breakpoints for mobile
+
+
+ANIMATION TIMINGS
+
+.detail-panel {
+  transition: width 200ms ease-out;
+}
+→ When width changes (400px ↔ 44px), animates over 200ms
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              KEY TAKEAWAYS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Layout Type: Flexbox side-by-side (row direction)
+   - NOT CSS Grid
+   - NOT positioned absolute overlay
+   - Pure flexbox "push" model
+
+2. Canvas/Panel Relationship: Responsive push
+   - Canvas flex: 1 (grows/shrinks)
+   - Panel width: 400px (fixed)
+   - When panel visible: Canvas takes 100% - 400px
+   - When panel hidden: Canvas takes 100%
+   - When panel collapsed: Canvas takes 100% - 44px
+
+3. Panel Behavior:
+   - Flex-shrink: 0 (protected from being squeezed)
+   - Overflow: hidden (clips content)
+   - Internal body scrolls (overflow-y: auto)
+   - Toggle button at left: -12px (overlaps border)
+
+4. Collapse Feature:
+   - Not horizontal dragging
+   - Just 400px → 44px state change
+   - Smooth 200ms transition
+   - Boolean state in React
+
+5. NO Current Features:
+   - Resize handle
+   - Width state management
+   - localStorage persistence
+   - Auto-save debounce
+
+6. Design Assumptions:
+   - Assumes ≥ 800px viewport width
+   - 400px detail panel considered necessary width
+   - Canvas can be as narrow as 368px (on 768px screens)
+   - Not optimized for mobile/tablet
+

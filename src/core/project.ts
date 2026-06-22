@@ -61,6 +61,7 @@ export function getDtPaths(dtRoot: string) {
   return {
     root: dtRoot,
     treeYaml: path.join(dtRoot, 'tree.yaml'),
+    indexYaml: path.join(dtRoot, 'index.yaml'),
     nodes: path.join(dtRoot, 'nodes'),
   };
 }

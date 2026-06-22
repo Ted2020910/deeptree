@@ -11,7 +11,7 @@ import { watch, type FSWatcher } from 'chokidar';
 import path from 'node:path';
 
 export interface WatchEvent {
-  type: 'add' | 'change' | 'unlink';
+  type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
   filePath: string;
   filename: string;
 }
@@ -37,6 +37,18 @@ export function watchDirectory(
   const watcher: FSWatcher = watch(dir, {
     ignoreInitial: true,
     persistent: true,
+    ignored: (filePath: string) => {
+      const parts = filePath.split(path.sep);
+      return parts.some((part) => [
+        '.git',
+        '.next',
+        '.turbo',
+        'node_modules',
+        'dist',
+        'build',
+        'coverage',
+      ].includes(part));
+    },
     usePolling: true,
     interval: 500,
     awaitWriteFinish: {
@@ -46,8 +58,9 @@ export function watchDirectory(
   });
 
   function pushEvent(type: WatchEvent['type'], filePath: string) {
-    // 关键修复3：过滤逻辑移到这里，只处理 .md 文件
-    if (!filePath.endsWith('.md')) return;
+    const isDirEvent = type === 'addDir' || type === 'unlinkDir';
+    // 关键修复3：过滤逻辑移到这里，文件只处理 .md，目录变化全部保留
+    if (!isDirEvent && !filePath.endsWith('.md')) return;
 
     const event: WatchEvent = {
       type,
@@ -67,6 +80,8 @@ export function watchDirectory(
   watcher.on('add', (fp: string) => pushEvent('add', fp));
   watcher.on('change', (fp: string) => pushEvent('change', fp));
   watcher.on('unlink', (fp: string) => pushEvent('unlink', fp));
+  watcher.on('addDir', (fp: string) => pushEvent('addDir', fp));
+  watcher.on('unlinkDir', (fp: string) => pushEvent('unlinkDir', fp));
 
   const events: AsyncIterable<WatchEvent> = {
     [Symbol.asyncIterator]() {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { TreeApiResponse, DtNode } from '../types'
+import type { TreeApiResponse, DtNode, CreateNodeInput } from '../types'
 
 export function useTree(projectId: string) {
   const [data, setData] = useState<TreeApiResponse | null>(null)
@@ -84,7 +84,7 @@ export function useTree(projectId: string) {
   }
 
   const createNode = useCallback(
-    async (input: { type: string; title: string; summary?: string; froms?: string[]; root?: boolean }): Promise<string> => {
+    async (input: CreateNodeInput): Promise<string> => {
       const data = await jsonFetch(`/api/projects/${projectId}/nodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

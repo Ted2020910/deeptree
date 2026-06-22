@@ -25,6 +25,8 @@ import { buildForest, buildTree } from '../utils/render.js';
 import { listProjects, findProjectById } from '../core/registry.js';
 import { gitAutoCommit } from '../core/git.js';
 import type { Edge } from '../types/index.js';
+import { syncNodeIndex } from '../core/node-index.js';
+import { buildProjectFileTree, createProjectFolder } from '../core/file-tree.js';
 
 async function parseBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
@@ -97,14 +99,40 @@ export async function handleApiRequest(
       const projectId = projectTreeMatch[1];
       const dtRoot = resolveDtRootForProject(projectId);
       if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      syncNodeIndex(dtRoot);
       const config = readTreeConfig(dtRoot);
       const nodes = listAllNodes(dtRoot);
       const forest = buildForest(nodes);
       json(res, {
         config,
         forest,
-        nodes: nodes.map(n => ({ ...n.frontmatter, content: n.content })),
+        nodes: nodes.map(n => ({ ...n.frontmatter, content: n.content, path: n.path })),
       });
+      return true;
+    }
+
+    // GET /api/projects/:id/files
+    const projectFilesMatch = pathname.match(/^\/api\/projects\/([^/]+)\/files$/);
+    if (method === 'GET' && projectFilesMatch) {
+      const projectId = projectFilesMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      json(res, buildProjectFileTree(dtRoot));
+      return true;
+    }
+
+    // POST /api/projects/:id/folders
+    const projectFoldersMatch = pathname.match(/^\/api\/projects\/([^/]+)\/folders$/);
+    if (method === 'POST' && projectFoldersMatch) {
+      const projectId = projectFoldersMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const body = await parseBody(req);
+      const folderPath = typeof body.path === 'string' ? body.path.trim() : '';
+      if (!folderPath) { error(res, 'path 字段必填'); return true; }
+      const createdPath = createProjectFolder(dtRoot, folderPath);
+      gitAutoCommit(dtRoot, `create folder ${createdPath}`);
+      json(res, { ok: true, path: createdPath }, 201);
       return true;
     }
 
@@ -153,15 +181,14 @@ export async function handleApiRequest(
       const title = typeof body.title === 'string' ? body.title : '';
       if (!title.trim()) { error(res, 'title 字段必填'); return true; }
       const summary = typeof body.summary === 'string' ? body.summary : '';
+      const nodePath = typeof body.path === 'string' && body.path.trim() ? body.path.trim() : undefined;
+      const directory = typeof body.directory === 'string' && body.directory.trim() ? body.directory.trim() : undefined;
+      const filename = typeof body.filename === 'string' && body.filename.trim() ? body.filename.trim() : undefined;
       const root = body.root === true;
       const fromsRaw = Array.isArray(body.froms) ? body.froms : [];
       const froms: string[] = [];
       for (const v of fromsRaw) {
         if (typeof v === 'string' && v.trim()) froms.push(v.trim());
-      }
-      if (!root && froms.length === 0) {
-        error(res, '非 root 节点必须提供 froms[] 或将 root=true');
-        return true;
       }
       // 验证父节点存在（仅本项目节点验证；跨项目交给 createNode 抛错）
       for (const f of froms) {
@@ -179,6 +206,9 @@ export async function handleApiRequest(
         froms,
         fromSummaries,
         root,
+        path: nodePath,
+        directory,
+        filename,
         dtRoot,
       });
       gitAutoCommit(dtRoot, `add ${type} ${id}: ${title}`);
@@ -282,7 +312,7 @@ export async function handleApiRequest(
       const idSet = new Set(ids);
       const exportedNodes = ids.map((id) => {
         const n = readNode(id, dtRoot);
-        return { ...n.frontmatter, content: n.content };
+        return { ...n.frontmatter, content: n.content, path: n.path };
       });
       // 只保留 source 与 target 都在导出集合内的边（用 'to' 边作为权威方向，去重）
       const internalEdges: Array<{ source: string; target: string; type: 'to'; summary: string }> = [];
@@ -312,6 +342,7 @@ export async function handleApiRequest(
           type: n.type,
           status: n.status,
           content: n.content,
+          path: n.path,
           created: n.created,
         })),
         internalEdges,
@@ -344,9 +375,13 @@ export async function handleApiRequest(
           const summary = typeof n.summary === 'string' ? n.summary : '';
           const isRoot = n.root === true;
           const content = typeof n.content === 'string' ? n.content : '';
+          const originalPath = typeof n.path === 'string' ? n.path : undefined;
+          const targetPath = originalPath && !fs.existsSync(path.join(path.dirname(dtRoot), originalPath))
+            ? originalPath
+            : undefined;
           if (!oldId) continue;
           const newId = createNode({
-            type, title, summary, root: isRoot, content, dtRoot,
+            type, title, summary, root: isRoot, content, path: targetPath, dtRoot,
           });
           idMap.set(oldId, newId);
           createdIds.push(newId);
@@ -401,7 +436,7 @@ export async function handleApiRequest(
         config,
         tree,
         forest,
-        nodes: nodes.map(n => ({ ...n.frontmatter, content: n.content })),
+        nodes: nodes.map(n => ({ ...n.frontmatter, content: n.content, path: n.path })),
       });
       return true;
     }
@@ -409,7 +444,7 @@ export async function handleApiRequest(
     // GET /api/nodes
     if (method === 'GET' && pathname === '/api/nodes') {
       const nodes = listAllNodes();
-      json(res, nodes.map((n) => ({ ...n.frontmatter, content: n.content })));
+      json(res, nodes.map((n) => ({ ...n.frontmatter, content: n.content, path: n.path })));
       return true;
     }
 
@@ -419,7 +454,7 @@ export async function handleApiRequest(
       const id = nodeMatch[1];
       if (!nodeExists(id)) { error(res, `节点 ${id} 不存在`, 404); return true; }
       const node = readNode(id);
-      json(res, { ...node.frontmatter, content: node.content });
+      json(res, { ...node.frontmatter, content: node.content, path: node.path });
       return true;
     }
 

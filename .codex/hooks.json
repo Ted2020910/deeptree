@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dt check --brief --since last --mark-seen 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

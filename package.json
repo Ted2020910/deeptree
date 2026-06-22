@@ -4,6 +4,7 @@
   "description": "Decision Tree CLI - Externalize AI agent decision-making as structured local Markdown decision trees",
   "type": "module",
   "main": "dist/index.js",
+  "desktopMain": "desktop/main.mjs",
   "bin": {
     "dt": "dist/index.js"
   },
@@ -13,7 +14,11 @@
     "build": "tsc && node -e \"const fs=require('fs'),p=require('path');function cp(s,d){fs.mkdirSync(d,{recursive:true});for(const f of fs.readdirSync(s)){const a=p.join(s,f),b=p.join(d,f);fs.statSync(a).isDirectory()?cp(a,b):fs.copyFileSync(a,b)}};cp('src/public','dist/public')\"",
     "build:frontend": "cd frontend && npm install && npm run build",
     "dev:frontend": "cd frontend && npm install && npm run dev",
-    "clean": "rm -rf dist"
+    "desktop": "npm run build:frontend && npm run build && electron desktop/main.mjs",
+    "build:desktop": "npm run build:frontend && npm run build && electron-builder",
+    "dist:mac": "npm run build:frontend && npm run build && electron-builder --mac",
+    "dist:win": "npm run build:frontend && npm run build && electron-builder --win",
+    "clean": "rm -rf dist release"
   },
   "keywords": [
     "decision-tree",
@@ -34,7 +39,39 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "@types/ws": "^8.18.1",
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3"
+  },
+  "build": {
+    "appId": "ai.deeptree.dt",
+    "productName": "dt",
+    "extraMetadata": {
+      "main": "desktop/main.mjs"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "dist/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "asar": true,
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    }
   }
 }

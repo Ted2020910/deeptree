@@ -25,6 +25,12 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { readRegistry, getRegistryPath } from './registry.js';
+import {
+  fromProjectRelative,
+  getProjectRoot,
+  readNodeIndex,
+  syncNodeIndex,
+} from './node-index.js';
 
 // ─────────────────────────────────────────────
 // 类型与路径
@@ -104,6 +110,23 @@ function copyDirSync(src: string, dest: string): void {
   }
 }
 
+function ensureParentDir(filePath: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
+function rmDirContents(dir: string): void {
+  if (!fs.existsSync(dir)) return;
+  for (const item of fs.readdirSync(dir)) {
+    fs.rmSync(path.join(dir, item), { recursive: true, force: true });
+  }
+}
+
+function copyFilePreserveRelative(src: string, destRoot: string, relativePath: string): void {
+  const dest = path.join(destRoot, relativePath);
+  ensureParentDir(dest);
+  fs.copyFileSync(src, dest);
+}
+
 function git(args: string[], cwd: string, timeoutMs = 15000): string {
   return execFileSync('git', args, {
     cwd,
@@ -111,6 +134,33 @@ function git(args: string[], cwd: string, timeoutMs = 15000): string {
     encoding: 'utf-8',
     timeout: timeoutMs,
   });
+}
+
+function currentBranch(cwd: string): string {
+  try {
+    const branch = git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd).trim();
+    return branch && branch !== 'HEAD' ? branch : 'main';
+  } catch {
+    return 'main';
+  }
+}
+
+function refreshRemoteCloneForOverwrite(cwd: string): void {
+  const branch = currentBranch(cwd);
+  try { git(['fetch', 'origin'], cwd, 20000); } catch { /* ignore */ }
+  try { git(['reset', '--hard', `origin/${branch}`], cwd, 20000); } catch { /* ignore */ }
+}
+
+function pushWithLocalPrecedence(cwd: string): void {
+  try {
+    git(['push', 'origin', 'HEAD'], cwd, 20000);
+    return;
+  } catch {
+    // Local snapshot is the source of truth for dt push. Refresh lease info,
+    // then overwrite the cloud snapshot if it diverged.
+    try { git(['fetch', 'origin'], cwd, 20000); } catch { /* ignore */ }
+    git(['push', '--force-with-lease', 'origin', 'HEAD'], cwd, 20000);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -161,8 +211,9 @@ export function pushProject(dtRoot: string): string {
     throw new Error('本地 clone 不存在，请先运行 `dt remote set <github-url>`');
   }
 
-  // 先拉取最新，避免推送时被 reject
-  try { git(['pull', '--rebase', '--autostash'], clonePath, 10000); } catch { /* ignore */ }
+  // dt push 语义：以当前本地项目快照为准覆盖云端项目快照。
+  // 只重置 ~/.dt/remote 这个缓存仓库，不会影响当前项目工作区。
+  refreshRemoteCloneForOverwrite(clonePath);
 
   let destDir: string;
   let label: string;
@@ -177,15 +228,26 @@ export function pushProject(dtRoot: string): string {
     label = projectId;
   }
 
-  // 清空旧的 nodes/，整体覆盖（确保删除的节点不会残留）
-  const destNodes = path.join(destDir, 'nodes');
-  if (fs.existsSync(destNodes)) fs.rmSync(destNodes, { recursive: true });
+  // 清空旧内容后整体覆盖（确保删除/移动的节点不会残留）
+  fs.mkdirSync(destDir, { recursive: true });
+  rmDirContents(destDir);
 
-  // 拷贝 .dt/ 内容（仅 tree.yaml + nodes/，不含其他文件）
+  syncNodeIndex(dtRoot);
+
+  // 拷贝 .dt/ 元数据
   const treeYaml = path.join(dtRoot, 'tree.yaml');
-  if (fs.existsSync(treeYaml)) fs.copyFileSync(treeYaml, path.join(destDir, 'tree.yaml') as string);
-  const nodesDir = path.join(dtRoot, 'nodes');
-  if (fs.existsSync(nodesDir)) copyDirSync(nodesDir, destNodes);
+  if (fs.existsSync(treeYaml)) copyFilePreserveRelative(treeYaml, destDir, '.dt/tree.yaml');
+  const indexYaml = path.join(dtRoot, 'index.yaml');
+  if (fs.existsSync(indexYaml)) copyFilePreserveRelative(indexYaml, destDir, '.dt/index.yaml');
+
+  // 拷贝分布式节点文件，保持项目内相对路径
+  const index = readNodeIndex(dtRoot);
+  for (const entry of Object.values(index.nodes)) {
+    const src = fromProjectRelative(entry.path, dtRoot);
+    if (fs.existsSync(src)) {
+      copyFilePreserveRelative(src, destDir, entry.path);
+    }
+  }
 
   // commit + push
   git(['add', '.'], clonePath);
@@ -199,7 +261,7 @@ export function pushProject(dtRoot: string): string {
 
   if (hasChanges) {
     git(['commit', '-m', `push: ${label}`], clonePath);
-    git(['push', 'origin', 'HEAD'], clonePath, 20000);
+    pushWithLocalPrecedence(clonePath);
   }
 
   setRemoteConfig({ ...config, lastSyncAt: new Date().toISOString() });
@@ -211,7 +273,7 @@ export function pushProject(dtRoot: string): string {
 // ─────────────────────────────────────────────
 
 /**
- * 从云端拉取当前项目最新内容，覆盖本地 .dt/。
+ * 从云端拉取当前项目最新内容，覆盖本地 dt 元数据和已索引节点文件。
  * @returns 拉取的 project-id 或 'global'
  */
 export function pullProject(dtRoot: string): string {
@@ -243,10 +305,17 @@ export function pullProject(dtRoot: string): string {
     throw new Error(`云端不存在项目 "${label}"，请先在某台机器上 dt push`);
   }
 
-  // 云端覆盖本地（清空 nodes/ 后重新复制）
-  const localNodes = path.join(dtRoot, 'nodes');
-  if (fs.existsSync(localNodes)) fs.rmSync(localNodes, { recursive: true });
-  copyDirSync(srcDir, dtRoot);
+  // 云端覆盖本地：先删除本地索引里已知节点，再复制云端项目快照。
+  const projectRoot = getProjectRoot(dtRoot);
+  try {
+    const localIndex = readNodeIndex(dtRoot);
+    for (const entry of Object.values(localIndex.nodes)) {
+      const localNodePath = fromProjectRelative(entry.path, dtRoot);
+      if (fs.existsSync(localNodePath)) fs.rmSync(localNodePath, { force: true });
+    }
+  } catch { /* ignore */ }
+  copyDirSync(srcDir, projectRoot);
+  syncNodeIndex(dtRoot);
 
   setRemoteConfig({ ...config, lastSyncAt: new Date().toISOString() });
   return label;
@@ -291,9 +360,8 @@ export function cloneProjectFromRemote(projectId: string, localPath?: string): s
   if (!fs.existsSync(srcProject)) throw new Error(`云端不存在项目 "${projectId}"`);
 
   const destDir = localPath ? path.resolve(localPath) : path.join(os.homedir(), 'projects', projectId);
-  const destDt = path.join(destDir, '.dt');
-  fs.mkdirSync(destDt, { recursive: true });
-  copyDirSync(srcProject, destDt);
+  fs.mkdirSync(destDir, { recursive: true });
+  copyDirSync(srcProject, destDir);
 
   return destDir;
 }

@@ -14,7 +14,18 @@ import path from 'node:path';
 import { readFrontmatterFile, writeFrontmatterFile } from './frontmatter.js';
 import { requireDtRoot, getDtPaths } from './project.js';
 import { findProjectById } from './registry.js';
-import { generateNextId, idToFilename } from '../utils/id.js';
+import { idToFilename } from '../utils/id.js';
+import {
+  DT_NODE_SCHEMA,
+  fromProjectRelative,
+  generateNextIndexedId,
+  getProjectRoot,
+  registerNodePath,
+  removeNodeFromIndex,
+  resolveNodeFilePath,
+  syncNodeIndex,
+  toProjectRelative,
+} from './node-index.js';
 import { parseCrossRef, isCrossRef } from '../types/index.js';
 import type { NodeFrontmatter, NodeFile, NodeStatus, Edge } from '../types/index.js';
 
@@ -26,13 +37,17 @@ function resolveDtRoot(dtRoot?: string): string {
 
 export function getNodePath(nodeId: string, dtRoot?: string): string {
   const root = resolveDtRoot(dtRoot);
+  const indexedPath = resolveNodeFilePath(nodeId, root);
+  if (indexedPath) return indexedPath;
   const paths = getDtPaths(root);
   return path.join(paths.nodes, idToFilename(nodeId));
 }
 
 export function nodeExists(nodeId: string, dtRoot?: string): boolean {
   try {
-    return fs.existsSync(getNodePath(nodeId, dtRoot));
+    const root = resolveDtRoot(dtRoot);
+    syncNodeIndex(root, { full: true });
+    return fs.existsSync(getNodePath(nodeId, root));
   } catch {
     return false;
   }
@@ -98,7 +113,13 @@ export function nodeExistsByRef(target: string, localDtRoot?: string): boolean {
  *   - 补全 root 字段
  */
 export function readNode(nodeId: string, dtRoot?: string): NodeFile {
-  const filePath = getNodePath(nodeId, dtRoot);
+  const root = resolveDtRoot(dtRoot);
+  syncNodeIndex(root, { full: true });
+  const filePath = getNodePath(nodeId, root);
+  return readNodeFile(filePath, nodeId, root);
+}
+
+function readNodeFile(filePath: string, nodeId: string, dtRoot?: string): NodeFile {
   if (!fs.existsSync(filePath)) {
     throw new Error(`节点 ${nodeId} 不存在`);
   }
@@ -116,6 +137,12 @@ export function readNode(nodeId: string, dtRoot?: string): NodeFile {
   >(filePath);
 
   let needsMigration = false;
+
+  // 新格式显式标记，避免分布式 Markdown 与普通 Markdown 混淆
+  if (!frontmatter.dt) {
+    frontmatter.dt = DT_NODE_SCHEMA;
+    needsMigration = true;
+  }
 
   // title 迁移
   if (!frontmatter.title) {
@@ -199,9 +226,14 @@ export function readNode(nodeId: string, dtRoot?: string): NodeFile {
 
   if (needsMigration) {
     writeFrontmatterFile(filePath, frontmatter, content);
+    registerNodePath(frontmatter.id, filePath, resolveDtRoot(dtRoot));
   }
 
-  return { frontmatter, content };
+  return {
+    frontmatter,
+    content,
+    path: toProjectRelative(filePath, resolveDtRoot(dtRoot)),
+  };
 }
 
 // ─── 创建节点 ────────────────────────────────────────────────
@@ -219,13 +251,20 @@ export function createNode(opts: {
   /** 是否为根节点 */
   root?: boolean;
   content?: string;
+  /** 节点 Markdown 文件路径（相对项目根目录或绝对路径） */
+  path?: string;
+  /** 节点 Markdown 所在目录（相对项目根目录或绝对路径；path 优先） */
+  directory?: string;
+  /** 节点 Markdown 文件名（仅与 directory 一起使用；默认 <id>.md） */
+  filename?: string;
   dtRoot?: string;
 }): string {
   const dtRoot = resolveDtRoot(opts.dtRoot);
   const paths = getDtPaths(dtRoot);
-  const id = generateNextId(paths.nodes, '');
+  const id = generateNextIndexedId(dtRoot);
 
   const frontmatter: NodeFrontmatter = {
+    dt: DT_NODE_SCHEMA,
     id,
     root: opts.root ?? false,
     title: opts.title,
@@ -238,8 +277,19 @@ export function createNode(opts: {
 
   const body = opts.content ? `# ${opts.title}\n\n${opts.content}` : `# ${opts.title}\n`;
 
-  const filePath = path.join(paths.nodes, idToFilename(id));
+  const filePath = resolveCreateNodePath({
+    id,
+    path: opts.path,
+    directory: opts.directory,
+    filename: opts.filename,
+    defaultDir: paths.nodes,
+    dtRoot,
+  });
+  if (fs.existsSync(filePath)) {
+    throw new Error(`节点文件已存在: ${toProjectRelative(filePath, dtRoot)}`);
+  }
   writeFrontmatterFile(filePath, frontmatter, body);
+  registerNodePath(id, filePath, dtRoot);
 
   // 绑定 from 边（双向：新节点写 from，父节点自动补 to）
   const froms = opts.froms ?? [];
@@ -255,6 +305,39 @@ export function createNode(opts: {
   }
 
   return id;
+}
+
+function resolveCreateNodePath(opts: {
+  id: string;
+  path?: string;
+  directory?: string;
+  filename?: string;
+  defaultDir: string;
+  dtRoot: string;
+}): string {
+  if (opts.path) {
+    return fromProjectRelative(toProjectRelative(opts.path, opts.dtRoot), opts.dtRoot);
+  }
+
+  if (!opts.directory) {
+    return path.join(opts.defaultDir, idToFilename(opts.id));
+  }
+
+  const projectRoot = getProjectRoot(opts.dtRoot);
+  const directory = path.isAbsolute(opts.directory)
+    ? path.resolve(opts.directory)
+    : path.resolve(projectRoot, opts.directory);
+  const relativeDirectory = path.relative(projectRoot, directory);
+  if (relativeDirectory.startsWith('..') || path.isAbsolute(relativeDirectory)) {
+    throw new Error(`节点目录必须位于项目目录内: ${opts.directory}`);
+  }
+  if (relativeDirectory.split(path.sep).includes('.dt')) {
+    throw new Error('不能将分布式节点写入 .dt 目录');
+  }
+
+  const rawFilename = (opts.filename?.trim() || idToFilename(opts.id)).replace(/[\\/]+/g, '-');
+  const filename = rawFilename.toLowerCase().endsWith('.md') ? rawFilename : `${rawFilename}.md`;
+  return path.join(directory, filename);
 }
 
 // ─── 边操作 ──────────────────────────────────────────────────
@@ -511,36 +594,23 @@ export function deleteNode(nodeId: string, dtRoot?: string): void {
     }
   }
 
-  // 兜底：扫描全项目，删除任何指向该节点的悬挂边
-  const paths = getDtPaths(root);
-  if (fs.existsSync(paths.nodes)) {
-    for (const f of fs.readdirSync(paths.nodes)) {
-      if (!f.endsWith('.md')) continue;
-      const otherId = f.replace(/\.md$/, '');
-      if (otherId === nodeId) continue;
-      removeEdgeSingle(otherId, nodeId, undefined, root);
-    }
+  // 兜底：扫描索引中的所有本项目节点，删除任何指向该节点的悬挂边
+  for (const other of listAllNodes(root)) {
+    const otherId = other.frontmatter.id;
+    if (otherId === nodeId) continue;
+    removeEdgeSingle(otherId, nodeId, undefined, root);
   }
 
   fs.unlinkSync(filePath);
+  removeNodeFromIndex(nodeId, root);
 }
 
 // ─── 列表查询 ────────────────────────────────────────────────
 
 export function listAllNodes(dtRoot?: string): NodeFile[] {
   const root = resolveDtRoot(dtRoot);
-  const paths = getDtPaths(root);
-  const nodesDir = paths.nodes;
-
-  if (!fs.existsSync(nodesDir)) return [];
-
-  const files = fs
-    .readdirSync(nodesDir)
-    .filter((f: string) => f.endsWith('.md'))
-    .sort();
-
-  return files.map((f: string) => {
-    const nodeId = f.replace(/\.md$/, '');
-    return readNode(nodeId, root);
-  });
+  const sync = syncNodeIndex(root, { full: true });
+  return Object.values(sync.index.nodes)
+    .sort()
+    .map((entry) => readNodeFile(fromProjectRelative(entry.path, root), entry.id, root));
 }

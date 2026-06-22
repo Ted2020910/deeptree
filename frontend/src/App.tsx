@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTree } from './hooks/useTree'
+import { useFileTree } from './hooks/useFileTree'
 import { useProjects } from './hooks/useProjects'
 import { DtCanvas } from './components/DtCanvas'
 import { DetailPanel } from './components/DetailPanel'
 import { StatusBar } from './components/StatusBar'
 import { ProjectSelector } from './components/ProjectSelector'
 import { CommandPalette } from './components/CommandPalette'
+import { ProjectExplorer } from './components/ProjectExplorer'
 import type { DtNode } from './types'
 
 function useTheme() {
@@ -30,6 +32,23 @@ function getInitialProjectId(projects: { id: string; reachable: boolean }[]): st
   const fromUrl = params.get('project')
   if (fromUrl && projects.find(p => p.id === fromUrl)) return fromUrl
   return projects.find(p => p.reachable)?.id ?? projects[0]?.id ?? ''
+}
+
+function parentDirectory(filePath?: string): string {
+  if (!filePath || filePath === '.') return '.'
+  const parts = filePath.split('/').filter(Boolean)
+  if (parts.length <= 1) return '.'
+  parts.pop()
+  return parts.join('/')
+}
+
+function createDirectoryFromPath(filePath?: string): string {
+  const directory = !filePath || filePath === '.'
+    ? '.'
+    : filePath.endsWith('.md')
+      ? parentDirectory(filePath)
+      : filePath
+  return directory.split('/').includes('.dt') ? '.' : directory
 }
 
 /* SVG icons (no emoji) */
@@ -70,6 +89,7 @@ export default function App() {
   const { projects, loading: projectsLoading, error: projectsError } = useProjects()
   const [currentProjectId, setCurrentProjectId] = useState<string>('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedPath, setSelectedPath] = useState<string>('.')
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set())
   const [layoutTrigger, setLayoutTrigger] = useState(0)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
@@ -120,6 +140,13 @@ export default function App() {
     data, loading: treeLoading, error: treeError,
     updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, updateEdge,
   } = useTree(currentProjectId)
+  const {
+    data: fileTreeData,
+    loading: fileTreeLoading,
+    error: fileTreeError,
+    refresh: refreshFileTree,
+    createFolder,
+  } = useFileTree(currentProjectId)
 
   const loading = projectsLoading || (!!currentProjectId && treeLoading)
   const error = projectsError ?? (currentProjectId ? treeError : null)
@@ -131,6 +158,7 @@ export default function App() {
   const handleProjectChange = (id: string) => {
     setCurrentProjectId(id)
     setSelectedId(null)
+    setSelectedPath('.')
     setMultiSelected(new Set())
     setEditingNodeId(null)
     history.replaceState(null, '', `?project=${id}`)
@@ -143,6 +171,8 @@ export default function App() {
       return
     }
     setSelectedId(id)
+    const selected = nodes.find(n => n.id === id)
+    if (selected?.path) setSelectedPath(selected.path)
     if (additive) {
       setMultiSelected(prev => {
         const next = new Set(prev)
@@ -152,7 +182,7 @@ export default function App() {
     } else {
       setMultiSelected(new Set([id]))
     }
-  }, [])
+  }, [nodes])
 
   /* ─── Inline create helpers ─────────────────────────── */
 
@@ -167,6 +197,7 @@ export default function App() {
     type: string
     froms?: string[]
     root?: boolean
+    directory?: string
   }): Promise<string | null> {
     try {
       const newId = await createNode({
@@ -175,6 +206,7 @@ export default function App() {
         summary: '',
         froms: opts.froms,
         root: opts.root,
+        directory: createDirectoryFromPath(opts.directory ?? selectedPath),
       })
       setSelectedId(newId)
       setEditingNodeId(newId)
@@ -190,12 +222,12 @@ export default function App() {
   const nodeActions = useMemo(() => ({
     onAddChild: async (id: string) => {
       const me = nodes.find(n => n.id === id)
-      await createInlineNode({ type: me?.type ?? 'explore', froms: [id] })
+      await createInlineNode({ type: me?.type ?? 'explore', froms: [id], directory: createDirectoryFromPath(me?.path) })
     },
     onAddParent: async (id: string) => {
       const me = nodes.find(n => n.id === id)
       try {
-        const newId = await createNode({ type: me?.type ?? 'explore', title: '未命名', root: true })
+        const newId = await createNode({ type: me?.type ?? 'explore', title: '未命名', root: true, directory: createDirectoryFromPath(me?.path) })
         await createEdge({ source: id, target: newId, type: 'from', summary: '' })
         setSelectedId(newId)
         setEditingNodeId(newId)
@@ -208,9 +240,9 @@ export default function App() {
       if (!me) return
       const parents = getParentIdsOf(me)
       if (parents.length === 0) {
-        await createInlineNode({ type: me.type, root: true })
+        await createInlineNode({ type: me.type, root: true, directory: createDirectoryFromPath(me.path) })
       } else {
-        await createInlineNode({ type: me.type, froms: parents })
+        await createInlineNode({ type: me.type, froms: parents, directory: createDirectoryFromPath(me.path) })
       }
     },
     onDelete: async (id: string) => {
@@ -235,13 +267,37 @@ export default function App() {
         setEditingNodeId(prev => (prev === id ? null : prev))
       }
     },
-  }), [nodes, createNode, createEdge, deleteNode, updateFrontmatter, selectedId, editingNodeId])
+  }), [nodes, createNode, createEdge, deleteNode, updateFrontmatter, selectedId, editingNodeId, selectedPath])
 
   /* ─── Add root (canvas button) ─────────────────────────── */
 
   const handleAddRoot = useCallback(async () => {
-    await createInlineNode({ type: 'goal', root: true })
+    await createInlineNode({ type: 'goal', root: true, directory: createDirectoryFromPath(selectedPath) })
+  }, [createNode, selectedPath]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAddLooseNode = useCallback(async () => {
+    await createInlineNode({ type: 'explore', directory: createDirectoryFromPath(selectedPath) })
+  }, [createNode, selectedPath]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCreateNodeAtDirectory = useCallback(async (directory: string) => {
+    const safeDirectory = createDirectoryFromPath(directory)
+    setSelectedPath(safeDirectory)
+    await createInlineNode({ type: 'explore', directory: safeDirectory })
   }, [createNode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCreateFolderAtDirectory = useCallback(async (directory: string) => {
+    const name = prompt('文件夹名称')
+    if (!name?.trim()) return
+    const safeDirectory = createDirectoryFromPath(directory)
+    const base = safeDirectory === '.' ? '' : `${safeDirectory}/`
+    try {
+      const created = await createFolder(`${base}${name.trim()}`)
+      setSelectedPath(created)
+      await refreshFileTree()
+    } catch (e) {
+      alert(`创建文件夹失败: ${String(e)}`)
+    }
+  }, [createFolder, refreshFileTree])
 
   /* ─── Connect / disconnect edges ─────────────────────────── */
 
@@ -464,6 +520,18 @@ export default function App() {
       </header>
 
       <div className="app-body">
+        <ProjectExplorer
+          root={fileTreeData?.root}
+          loading={fileTreeLoading}
+          error={fileTreeError}
+          selectedNodeId={selectedId}
+          selectedPath={selectedPath}
+          onSelectPath={setSelectedPath}
+          onSelectNode={(id) => handleSelect(id, false)}
+          onCreateNode={handleCreateNodeAtDirectory}
+          onCreateFolder={handleCreateFolderAtDirectory}
+          onRefresh={refreshFileTree}
+        />
         <DtCanvas
           dtNodes={nodes}
           selectedId={selectedId}
@@ -476,6 +544,7 @@ export default function App() {
           onDeleteEdge={handleEdgeDelete}
           onCommitEdgeSummary={handleEdgeCommitSummary}
           onAddRoot={handleAddRoot}
+          onAddNode={handleAddLooseNode}
         />
         {selectedNode && (
           <>
@@ -500,6 +569,7 @@ export default function App() {
           onSelectNode={(id) => { handleSelect(id, false); setCmdkOpen(false) }}
           actions={[
             { id: 'add-root',  label: '＋ 新增根节点',          run: () => { setCmdkOpen(false); handleAddRoot() } },
+            { id: 'add-node',  label: '＋ 在当前目录新增节点',    run: () => { setCmdkOpen(false); handleAddLooseNode() } },
             { id: 'relayout',  label: '⟲ 重新布局',             run: () => { setCmdkOpen(false); triggerLayout() } },
             { id: 'export',    label: '⤓ 导出已选节点',         run: () => { setCmdkOpen(false); handleExport() } },
             { id: 'import',    label: '⤒ 导入 bundle',           run: () => { setCmdkOpen(false); handleImportClick() } },

@@ -9,6 +9,7 @@ import chalk from 'chalk';
 import { requireDtRoot, readTreeConfig } from '../core/project.js';
 import { listAllNodes } from '../core/node.js';
 import { gitCommitIfChanged } from '../core/git.js';
+import { syncNodeIndex } from '../core/node-index.js';
 
 export function registerStatusCommand(program: Command): void {
   program
@@ -17,6 +18,7 @@ export function registerStatusCommand(program: Command): void {
     .action(() => {
       const dtRoot = requireDtRoot();
 
+      syncNodeIndex(dtRoot, { full: true });
       // 自动检测并提交人类编辑
       const humanChanges = gitCommitIfChanged(dtRoot);
       if (humanChanges) {

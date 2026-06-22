@@ -15,6 +15,7 @@ export interface DtNode extends Record<string, unknown> {
   edges: DtEdge[]
   created: string
   content: string
+  path?: string
 }
 
 export interface TreeApiResponse {
@@ -22,10 +23,43 @@ export interface TreeApiResponse {
   nodes: DtNode[]
 }
 
+export interface FileTreeDtNodeMarker {
+  id: string
+  title: string
+  type: string
+  status: DtNode['status']
+  root: boolean
+}
+
+export interface FileTreeEntry {
+  name: string
+  path: string
+  type: 'directory' | 'file'
+  isMarkdown?: boolean
+  dtNode?: FileTreeDtNodeMarker
+  children?: FileTreeEntry[]
+}
+
+export interface FileTreeResponse {
+  root: FileTreeEntry
+  updated: string
+}
+
+export interface CreateNodeInput {
+  type: string
+  title: string
+  summary?: string
+  froms?: string[]
+  root?: boolean
+  path?: string
+  directory?: string
+  filename?: string
+}
+
 export interface SaveFns {
   updateFrontmatter: (id: string, updates: Partial<Pick<DtNode, 'title' | 'summary' | 'status' | 'type'>>) => Promise<void>
   updateContent: (id: string, content: string) => Promise<void>
-  createNode: (input: { type: string; title: string; summary?: string; froms?: string[]; root?: boolean }) => Promise<string>
+  createNode: (input: CreateNodeInput) => Promise<string>
   deleteNode: (id: string) => Promise<void>
   createEdge: (input: { source: string; target: string; type: 'from' | 'to'; summary?: string }) => Promise<void>
   deleteEdge: (input: { source: string; target: string; type?: 'from' | 'to' }) => Promise<void>

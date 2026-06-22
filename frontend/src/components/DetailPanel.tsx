@@ -148,6 +148,23 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
       <div className="detail-panel__header">
         <div className="detail-panel__id-row">
           <span className="detail-panel__hero-id">#{node.id}</span>
+          {node.path && (
+            <span
+              className="detail-panel__path"
+              title={node.path}
+              style={{
+                marginLeft: 8,
+                color: 'var(--text-tertiary)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {node.path}
+            </span>
+          )}
         </div>
 
         <input
