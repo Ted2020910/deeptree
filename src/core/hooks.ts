@@ -430,6 +430,42 @@ const DT_AGENT_METADATA = `interface:
   default_prompt: "Use the dt skill to inspect and update this project's decision tree before making project decisions."
 `;
 
+const DT_QODER_RULE = `---
+trigger: always_on
+---
+
+## Decision Tree
+
+DT 是人机协作的决策过程外化工具。如果当前目录存在 \`.dt/\`，会话开始时先执行 \`dt tree\` 了解当前状态。
+
+### 场景路由
+
+根据任务性质加载对应场景文件（位于 \`.agents/skills/dt/scenarios/\`）：
+
+| 场景 | 适用时机 |
+|------|----------|
+| \`discussion.md\` | 问题尚未明确，需要对齐理解、推导方案 |
+| \`planning.md\` | 有多个可行方案需要取舍，或需要拆解模块结构 |
+| \`implementation.md\` | 需求已明确，进入拆解执行和状态追踪 |
+
+三个场景连接成一条链：**discussion → planning → implementation**。
+完整技能文档：\`.agents/skills/dt/SKILL.md\`
+
+### 核心命令
+
+| 命令 | 说明 |
+|------|------|
+| \`dt tree\` | 查看全局结构 |
+| \`dt status\` | 查看项目概览 |
+| \`dt show <id>\` | 查看节点详情 |
+| \`dt add <type> "标题" --from <id>\` | 添加子节点 |
+| \`dt add <type> "标题" --root\` | 添加根节点 |
+| \`dt link <src> <tgt> "摘要" --direction to\` | 连接已有节点 |
+| \`dt update <id> --status/--title/--summary/--type\` | 更新结构化字段 |
+
+**Git 操作由 dt CLI 自动处理，无需手动 commit。**
+`;
+
 /**
  * 设置 .claude/settings.json（简化版，不再添加 Hook）
  */
@@ -536,7 +572,12 @@ function writeDtSkill(projectDir: string, rootDir: '.agents' | '.claude', skill:
   writeManagedFile(path.join(skillDir, 'scenarios', 'planning.md'), DT_SCENARIO_PLANNING);
 }
 
+function writeQoderRule(projectDir: string): void {
+  writeManagedFile(path.join(projectDir, '.qoder', 'rules', 'dt.md'), DT_QODER_RULE);
+}
+
 export function updateProjectSkillFiles(projectDir: string): void {
   writeDtSkill(projectDir, '.agents', CODEX_DT_SKILL);
   writeDtSkill(projectDir, '.claude', CLAUDE_DT_SKILL);
+  writeQoderRule(projectDir);
 }
