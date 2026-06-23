@@ -1,111 +1,111 @@
 version: 1
-updated: "2026-06-23T09:21:39.146Z"
+updated: "2026-06-23T09:31:29.372Z"
 nodes:
   "002":
     id: "002"
     path: 项目思想/002-为什么要有dt这个项目.md
     mtimeMs: 1782198941771.7898
     hash: 91962448964ddeb6423993f0896cf667ce27240b
-    indexedAt: "2026-06-23T09:21:39.133Z"
+    indexedAt: "2026-06-23T09:31:29.351Z"
   "003":
     id: "003"
     path: 项目思想/003-人类真实的工作决策模式是什么.md
     mtimeMs: 1782179921588.3198
     hash: 6856fd9a62e0f9af3911606fa66889969caccf77
-    indexedAt: "2026-06-23T09:21:39.134Z"
+    indexedAt: "2026-06-23T09:31:29.352Z"
   "004":
     id: "004"
     path: 项目思想/004-dt本质要做什么.md
     mtimeMs: 1782179921589.3218
     hash: 68730cfb8821e8b61c4325c6dbe1a3b1ff8edad5
-    indexedAt: "2026-06-23T09:21:39.136Z"
+    indexedAt: "2026-06-23T09:31:29.354Z"
   "005":
     id: "005"
     path: 项目思想/005-dt工具应该实现成什么样子.md
     mtimeMs: 1782179921590.319
     hash: 98517f38d535b1681802121075bc4d8e69c1c201
-    indexedAt: "2026-06-23T09:21:39.137Z"
+    indexedAt: "2026-06-23T09:31:29.355Z"
   "006":
     id: "006"
     path: 项目思想/006-AI-Agent的能力边界与运作方式.md
     mtimeMs: 1782183820453.4988
     hash: 6d76f43ca59133bede9601a22f003bdb1a1fe202
-    indexedAt: "2026-06-23T09:21:39.138Z"
+    indexedAt: "2026-06-23T09:31:29.357Z"
   "007":
     id: "007"
     path: 项目思想/007-人类在使用AI工具时的工作方式.md
     mtimeMs: 1782179921591.3247
     hash: 6815578d08c8358ad794ccb8049406d0a0ab00e2
-    indexedAt: "2026-06-23T09:21:39.139Z"
+    indexedAt: "2026-06-23T09:31:29.358Z"
   "008":
     id: "008"
     path: src/commands/008-CLI命令设计.md
     mtimeMs: 1782179921565.3127
     hash: d4a874212568b2b72f23802b5e365e7d2031450d
-    indexedAt: "2026-06-23T09:21:39.127Z"
+    indexedAt: "2026-06-23T09:31:29.345Z"
   "009":
     id: "009"
     path: src/core/009-核心数据模型.md
     mtimeMs: 1782179921570.3164
     hash: 78e65619edfe3bd48bc9746b2ddf5f22b3d5a0e0
-    indexedAt: "2026-06-23T09:21:39.128Z"
+    indexedAt: "2026-06-23T09:31:29.347Z"
   "010":
     id: "010"
     path: 项目思想/010-dt项目改造与实现.md
     mtimeMs: 1782183820450.4995
     hash: a00cc2679209c42ee4d8e5055584e324f78f1baf
-    indexedAt: "2026-06-23T09:21:39.140Z"
+    indexedAt: "2026-06-23T09:31:29.359Z"
   "011":
     id: "011"
     path: 项目思想/011-Agent协议优化.md
     mtimeMs: 1782194270549.3997
     hash: ac173d1c0dd5fac9ebb991fc0e4a1dbf8359bd85
-    indexedAt: "2026-06-23T09:21:39.141Z"
+    indexedAt: "2026-06-23T09:31:29.368Z"
   "012":
     id: "012"
     path: src/core/012-新建节点的默认行为.md
     mtimeMs: 1782183820456.4973
     hash: fd52bbb912e790aa623b06e2e99e57114cec3228
-    indexedAt: "2026-06-23T09:21:39.129Z"
+    indexedAt: "2026-06-23T09:31:29.348Z"
   "013":
     id: "013"
     path: frontend/src/013-前端展示.md
     mtimeMs: 1782179921555.3103
     hash: 9a6151d83d57a2ab1a8015a024460dd624fdda59
-    indexedAt: "2026-06-23T09:21:39.125Z"
+    indexedAt: "2026-06-23T09:31:29.342Z"
   "014":
     id: "014"
     path: src/server/014-多项目管理.md
     mtimeMs: 1782200570647.164
     hash: c4d481282f6eba6d47e7eda56b2147003799cc76
-    indexedAt: "2026-06-23T09:21:39.132Z"
+    indexedAt: "2026-06-23T09:31:29.350Z"
   "015":
     id: "015"
     path: frontend/src/components/015-前端布局算法设计.md
     mtimeMs: 1782179921557.3123
     hash: f2495d5ccf2477699bac5ad87657a8f7c3a31ed0
-    indexedAt: "2026-06-23T09:21:39.126Z"
+    indexedAt: "2026-06-23T09:31:29.343Z"
   "016":
     id: "016"
     path: 项目思想/016-项目介绍.md
     mtimeMs: 1782206375236.3718
     hash: 12026c1886b1686df2a3ec0069baab5b625216a6
-    indexedAt: "2026-06-23T09:21:39.142Z"
+    indexedAt: "2026-06-23T09:31:29.369Z"
   "017":
     id: "017"
     path: 项目思想/017-受众定义与痛点分析.md
     mtimeMs: 1782206375238.3936
     hash: 5340081593bf7f248d98e7dc78be4846d8d62ebc
-    indexedAt: "2026-06-23T09:21:39.144Z"
+    indexedAt: "2026-06-23T09:31:29.371Z"
   "018":
     id: "018"
     path: 项目思想/018-GitHub-README改写.md
     mtimeMs: 1782205932308.2092
     hash: d7a61722fc71a6826690e4b826699c2e3bdb1b74
-    indexedAt: "2026-06-23T09:21:39.146Z"
+    indexedAt: "2026-06-23T09:31:29.372Z"
   "019":
     id: "019"
     path: src/core/019-分布式节点文件.md
     mtimeMs: 1782206375233.3699
     hash: fbc27d6585c437ec5ceea335f316fd4ea198c710
-    indexedAt: "2026-06-23T09:21:39.131Z"
+    indexedAt: "2026-06-23T09:31:29.349Z"
