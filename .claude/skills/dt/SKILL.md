@@ -1,6 +1,6 @@
 ---
 name: dt
-description: Decision Tree project-memory workflow for repositories that contain a .dt/ directory or mention the dt skill. Use before project decisions, architecture changes, feature work, protocol updates, or when inspecting or updating decision history with dt tree/status/show/add/link/update.
+description: Decision Tree project-memory workflow for repositories that contain a .dt/ directory or mention the dt skill. Use before project decisions, architecture changes, feature work, protocol updates, or when inspecting or updating decision history with dt tree/status/show/add/link/update/scan/upgrade.
 ---
 
 # DT
@@ -33,14 +33,16 @@ If the tree is too broad for the task, use `dt status`, then inspect only the re
 - `dt add <type> "title" --from <id>`: create a child node.
 - `dt link <src> <tgt> "summary" --direction to`: connect existing nodes.
 - `dt update <id> --status/--title/--summary/--type`: update structured fields.
+- `dt scan`: rebuild the distributed Markdown node index.
+- `dt upgrade`: upgrade the CLI checkout and migrate the current project to the latest DT protocol.
 
 DT nodes may live anywhere in the project. The index is `.dt/index.yaml`; prefer DT commands over manual index edits.
 
 ## Agent Surface
 
-For Claude Code, this project skill lives at `.claude/skills/dt/SKILL.md` and can be invoked as the `dt` skill from `CLAUDE.md`.
+For Codex, this project skill lives at `.agents/skills/dt/SKILL.md` and is referenced as `$dt` from `AGENTS.md`.
 
-For Codex, the matching project skill lives at `.agents/skills/dt/SKILL.md` and is referenced as `$dt` from `AGENTS.md`.
+For Claude Code, the matching project skill lives at `.claude/skills/dt/SKILL.md` and is referenced from `CLAUDE.md`.
 
 ## Guardrails
 

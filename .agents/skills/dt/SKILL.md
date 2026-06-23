@@ -1,40 +1,52 @@
 ---
 name: dt
-description: Decision Tree project-memory workflow for repositories that contain a .dt/ directory or mention the $dt skill. Use before project decisions, architecture changes, feature work, protocol updates, or when inspecting or updating decision history with dt tree/status/show/add/link/update.
+description: Decision Tree project-memory workflow for repositories that contain a .dt/ directory or mention the $dt skill. Use before project decisions, architecture changes, feature work, protocol updates, or when inspecting or updating decision history with dt tree/status/show/add/link/update/scan/upgrade.
 ---
 
 # DT
 
-Use DT as the project's decision-process memory. It keeps "why we decided this" visible, not just "what changed".
+DT 是人机协作的决策过程外化工具。它把"为什么这样决定"记录下来，而不只是"改了什么"。
 
-## Start
+根据当前任务选择对应场景，场景文件在 `scenarios/` 目录下。
 
-When the current repository contains `.dt/`, run:
+## 场景路由
+
+| 场景 | 适用时机 | 详细协议 |
+|------|----------|----------|
+| **discussion** | 问题尚未明确，需要对齐理解、推导方案 | `scenarios/discussion.md` |
+| **planning** | 有多个可行方案需要取舍，或需要拆解模块结构 | `scenarios/planning.md` |
+| **implementation** | 需求已明确，进入拆解执行和状态追踪 | `scenarios/implementation.md` |
+
+三个场景可以连接成一条链：**discussion → planning → implementation**，对应从"问题模糊"到"方案确定"再到"任务完成"。
+
+## 开始
+
+当前目录包含 `.dt/` 时，先运行：
 
 ```bash
 dt tree
 ```
 
-If the tree is too broad for the task, use `dt status`, then inspect only the relevant node with `dt show <id>`.
+再根据当前任务性质，读取对应场景文件获取具体工作方式。
 
-## Workflow
+## 核心命令
 
-1. Read the current decision context before making project-level choices.
-2. Align the boundary of a new or ambiguous request in 1-2 sentences before implementation.
-3. Work inside one relevant node at a time; do not expand several unresolved branches at once.
-4. After a decision or task outcome, update the relevant node status or summary with `dt update`, and edit node Markdown directly when the reasoning body needs detail.
+- `dt tree`：查看全局结构
+- `dt status`：查看项目概览
+- `dt show <id>`：查看节点详情
+- `dt add <type> "title" --root`：创建根节点
+- `dt add <type> "title" --from <id>`：创建子节点
+- `dt link <src> <tgt> "summary" --direction to`：连接已有节点
+- `dt update <id> --status/--title/--summary/--type`：更新结构化字段
+- `dt scan`：重建分布式节点索引
+- `dt upgrade`：升级 CLI 并迁移项目到最新协议
 
-## Commands
+DT 节点可以存在于项目任意位置，索引在 `.dt/index.yaml`，优先用命令操作，不要手动编辑索引。
 
-- `dt tree`: show the global structure and distributed node paths.
-- `dt status`: show project statistics and roots.
-- `dt show <id>`: inspect a node's frontmatter and body.
-- `dt add <type> "title" --root`: create a root node.
-- `dt add <type> "title" --from <id>`: create a child node.
-- `dt link <src> <tgt> "summary" --direction to`: connect existing nodes.
-- `dt update <id> --status/--title/--summary/--type`: update structured fields.
+## 节点类型参考
 
-DT nodes may live anywhere in the project. The index is `.dt/index.yaml`; prefer DT commands over manual index edits.
+节点类型是自由字符串，推荐四种：`explore`、`task`、`document`、`decision`。
+详见 `references/styles.md`。
 
 ## Agent Surface
 
@@ -46,4 +58,4 @@ For Claude Code, the matching project skill lives at `.claude/skills/dt/SKILL.md
 
 - Do not use obsolete commands such as `dt check`.
 - Do not treat DT as a replacement for Git; it records reasoning and task structure.
-- Keep responses cognitively small when aligning with the user: no more than four key points in one reply.
+

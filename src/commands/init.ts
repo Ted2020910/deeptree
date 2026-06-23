@@ -12,7 +12,7 @@ import {
   findDtRoot,
   writeTreeConfig,
 } from '../core/project.js';
-import { setupClaudeHook, updateProjectEntryFiles } from '../core/hooks.js';
+import { setupClaudeHook, updateProjectEntryFiles, updateProjectSkillFiles } from '../core/hooks.js';
 import { gitAutoCommit } from '../core/git.js';
 import { registerProject, pathToId } from '../core/registry.js';
 import { syncNodeIndex } from '../core/node-index.js';
@@ -46,10 +46,11 @@ export function registerInitCommand(program: Command): void {
         console.log(chalk.dim('  (跳过 Hook 配置)'));
       }
       try {
+        updateProjectSkillFiles(process.cwd());
         updateProjectEntryFiles(process.cwd());
-        console.log(chalk.green('✓ CLAUDE.md / AGENTS.md 已更新'));
+        console.log(chalk.green('✓ CLAUDE.md / AGENTS.md / dt skills 已更新'));
       } catch {
-        console.log(chalk.dim('  (跳过项目入口文件更新)'));
+        console.log(chalk.dim('  (跳过项目入口文件 / skill 更新)'));
       }
 
       gitAutoCommit(dtRoot, `init: ${name}`);

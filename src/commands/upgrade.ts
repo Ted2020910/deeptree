@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import { findDtRoot, getDtPaths } from '../core/project.js';
-import { updateProjectEntryFiles } from '../core/hooks.js';
+import { updateProjectEntryFiles, updateProjectSkillFiles } from '../core/hooks.js';
 import { readFrontmatterFile, writeFrontmatterFile } from '../core/frontmatter.js';
 import { gitAutoCommit } from '../core/git.js';
 import { DT_NODE_SCHEMA, getProjectRoot, syncNodeIndex } from '../core/node-index.js';
@@ -421,6 +421,9 @@ function migrateProjectNodes(dtRoot: string): MigrationResult {
 
 function upgradeProject(dtRoot: string): void {
   const projectDir = path.dirname(dtRoot);
+
+  console.log(chalk.dim('  更新项目级 dt skills...'));
+  updateProjectSkillFiles(projectDir);
 
   console.log(chalk.dim('  更新 CLAUDE.md / AGENTS.md...'));
   updateProjectEntryFiles(projectDir);
