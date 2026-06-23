@@ -58,4 +58,4 @@ For Claude Code, the matching project skill lives at `.claude/skills/dt/SKILL.md
 
 - Do not use obsolete commands such as `dt check`.
 - Do not treat DT as a replacement for Git; it records reasoning and task structure.
-
+- Keep responses cognitively small when aligning with the user: no more than four key points in one reply.
