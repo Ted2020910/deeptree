@@ -5,9 +5,13 @@
  * Agent 不需要知道 git 的存在。
  */
 
-import { execFileSync, execSync } from 'node:child_process';
+import { execFile, execFileSync, execSync } from 'node:child_process';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { syncNodeIndex } from './node-index.js';
+
+const execFileAsync = promisify(execFile);
+let autoCommitQueue: Promise<void> = Promise.resolve();
 
 /**
  * 检查是否在 git 仓库中
@@ -79,6 +83,49 @@ export function gitAutoCommit(dtRoot: string, message: string): void {
   } catch {
     // 静默处理任何 git 错误
   }
+}
+
+async function gitAutoCommitAsync(dtRoot: string, message: string): Promise<void> {
+  const projectDir = getProjectDir(dtRoot);
+  if (!isGitRepo(projectDir)) return;
+
+  try {
+    const managedPaths = getDtManagedPaths(dtRoot);
+
+    await execFileAsync('git', ['add', '--', ...managedPaths], {
+      cwd: projectDir,
+      windowsHide: true,
+    });
+
+    try {
+      await execFileAsync('git', ['diff', '--cached', '--quiet', '--', ...managedPaths], {
+        cwd: projectDir,
+        windowsHide: true,
+      });
+      return;
+    } catch {
+      // staged changes exist
+    }
+
+    await execFileAsync('git', ['commit', '-m', `dt: ${message}`], {
+      cwd: projectDir,
+      windowsHide: true,
+    });
+  } catch {
+    // Keep API writes fast and non-fatal even when git is unavailable or busy.
+  }
+}
+
+/**
+ * HTTP handlers should not wait for git. Queue commits so expensive git add/diff/commit
+ * work happens after the API response path has finished mutating files.
+ */
+export function gitAutoCommitLater(dtRoot: string, message: string): void {
+  autoCommitQueue = autoCommitQueue
+    .then(() => gitAutoCommitAsync(dtRoot, message))
+    .catch(() => {
+      // Keep the queue alive after any unexpected failure.
+    });
 }
 
 /**

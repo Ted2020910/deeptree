@@ -1,4 +1,4 @@
-/* ─── Nothing Design System — Dark Mode (OLED) ─── */
+﻿/* ─── Nothing Design System — Dark Mode (OLED) ─── */
 
 :root {
   --bg:              #000000;
@@ -185,6 +185,34 @@ body {
   overflow: hidden;
 }
 
+.project-explorer-resize-handle {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  position: relative;
+  z-index: 6;
+  transition: background 150ms ease-out;
+}
+
+.project-explorer-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 2px;
+  background: var(--border);
+  opacity: 0;
+  transition: opacity 150ms ease-out, background 150ms ease-out;
+}
+
+.project-explorer-resize-handle:hover::after {
+  opacity: 1;
+  background: var(--interactive);
+}
+
 .project-explorer__header {
   height: 36px;
   display: flex;
@@ -348,6 +376,10 @@ body {
 .project-explorer__actions svg {
   width: 13px;
   height: 13px;
+}
+
+.project-explorer__actions--single {
+  display: inline-flex;
 }
 
 .project-explorer__state {
@@ -1196,6 +1228,7 @@ body {
 /* ReactFlow overrides */
 .canvas-wrap {
   flex: 1;
+  min-width: 0;
   position: relative;
   background: var(--bg);
 }
@@ -1656,6 +1689,13 @@ kbd {
 }
 .btn-primary:hover { filter: brightness(0.92); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+.btn-primary--danger {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-display);
+}
+.btn-primary--danger:hover { filter: brightness(1.08); }
+.btn-primary svg { width: 14px; height: 14px; }
 
 .btn-icon {
   display: inline-flex;
@@ -1788,6 +1828,308 @@ kbd {
   color: var(--text-disabled);
 }
 
+.action-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.action-modal {
+  width: min(560px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--border-visible);
+  border-radius: 8px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.action-modal--compact {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.action-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.action-modal__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-display);
+}
+
+.action-modal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-visible);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action-modal__close:hover {
+  color: var(--text-display);
+  border-color: var(--text-secondary);
+}
+
+.action-modal__body {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px 8px;
+}
+
+.action-modal__field {
+  display: grid;
+  gap: 8px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.action-modal__field input,
+.action-modal__field select,
+.action-modal__field textarea {
+  width: 100%;
+  border: 1px solid var(--border-visible);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  outline: none;
+}
+
+.action-modal__field textarea {
+  resize: vertical;
+  min-height: 92px;
+}
+
+.action-modal__field input:focus,
+.action-modal__field select:focus,
+.action-modal__field textarea:focus {
+  border-color: var(--interactive);
+  box-shadow: 0 0 0 2px rgba(91, 155, 246, 0.18);
+}
+
+.action-modal__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.action-modal__switch input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--interactive);
+}
+
+.action-modal__error {
+  border: 1px solid rgba(215, 25, 33, 0.4);
+  background: rgba(215, 25, 33, 0.08);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.action-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 20px;
+}
+
+/* Edge delete confirmation */
+.delete-confirm__backdrop {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(215, 25, 33, 0.10), transparent 32%),
+    rgba(0, 0, 0, 0.62);
+}
+
+.delete-confirm {
+  border-color: rgba(215, 25, 33, 0.55);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.60),
+    0 0 0 1px rgba(215, 25, 33, 0.14);
+}
+
+.delete-confirm__header {
+  background:
+    linear-gradient(90deg, rgba(215, 25, 33, 0.12), transparent 58%),
+    var(--surface);
+}
+
+.delete-confirm__title {
+  color: var(--text-display);
+}
+
+.delete-confirm__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(215, 25, 33, 0.55);
+  border-radius: 4px;
+  background: rgba(215, 25, 33, 0.12);
+  color: var(--accent);
+}
+
+.delete-confirm__body {
+  gap: 16px;
+  padding-bottom: 12px;
+}
+
+.delete-confirm__copy {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.delete-confirm__relation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-visible);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle, var(--dot-texture) 0.5px, transparent 0.5px),
+    var(--surface-raised);
+  background-size: 5px 5px, 100% 100%;
+}
+
+.delete-confirm__single {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-visible);
+  border-left: 2px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface-raised);
+}
+
+.delete-confirm__single svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.delete-confirm__single div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.delete-confirm__single strong {
+  font-family: 'Space Mono', monospace;
+  color: var(--text-display);
+}
+
+.delete-confirm__single span,
+.delete-confirm__single small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.delete-confirm__single small {
+  color: var(--text-disabled);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.delete-confirm__node {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.delete-confirm__node--source { border-left: 2px solid var(--text-secondary); }
+.delete-confirm__node--target { border-left: 2px solid var(--accent); }
+
+.delete-confirm__node-kicker {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-disabled);
+}
+
+.delete-confirm__node strong {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--text-display);
+}
+
+.delete-confirm__node span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.delete-confirm__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.delete-confirm__footer .btn-ghost:disabled,
+.delete-confirm__footer .action-modal__close:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+  .delete-confirm__relation {
+    grid-template-columns: 1fr;
+  }
+
+  .delete-confirm__arrow {
+    transform: rotate(90deg);
+  }
+}
+
 /* Edge label: delete button (hover visible) */
 .edge-label__delete {
   display: none;
@@ -1805,6 +2147,10 @@ kbd {
   line-height: 1;
   cursor: pointer;
   vertical-align: middle;
+}
+.edge-label__delete svg {
+  width: 10px;
+  height: 10px;
 }
 .edge-label:hover .edge-label__delete { display: inline-flex; }
 .edge-label__delete:hover {
@@ -1833,3 +2179,4 @@ kbd {
 }
 /* 让卡片本身也允许溢出（之前 .node-card overflow: hidden 会裁掉外凸按钮） */
 .node-card.node-card--has-actions { overflow: visible; }
+

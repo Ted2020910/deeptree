@@ -340,6 +340,97 @@ function resolveCreateNodePath(opts: {
   return path.join(directory, filename);
 }
 
+function deriveTitleFromMarkdown(filePath: string, content: string): string {
+  const heading = content.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  if (heading) return heading;
+  return path.basename(filePath, path.extname(filePath));
+}
+
+function normalizeExistingEdges(edges: unknown): Edge[] {
+  if (!Array.isArray(edges)) return [];
+  return edges.filter((edge): edge is Edge => {
+    if (!edge || typeof edge !== 'object') return false;
+    const e = edge as Partial<Edge>;
+    return typeof e.target === 'string' && (e.type === 'from' || e.type === 'to') && typeof e.summary === 'string';
+  });
+}
+
+export function promoteMarkdownToNode(opts: {
+  path: string;
+  type?: string;
+  title?: string;
+  summary?: string;
+  root?: boolean;
+  froms?: string[];
+  fromSummaries?: string[];
+  fromDepths?: number[];
+  dtRoot?: string;
+}): string {
+  const dtRoot = resolveDtRoot(opts.dtRoot);
+  const projectRoot = getProjectRoot(dtRoot);
+  const absolutePath = path.isAbsolute(opts.path)
+    ? path.resolve(opts.path)
+    : path.resolve(projectRoot, opts.path);
+  const relativePath = toProjectRelative(absolutePath, dtRoot);
+
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`Markdown 文件不存在: ${relativePath}`);
+  }
+  if (!absolutePath.toLowerCase().endsWith('.md')) {
+    throw new Error(`只能将 Markdown 文件转为节点: ${relativePath}`);
+  }
+
+  const stat = fs.statSync(absolutePath);
+  if (!stat.isFile()) {
+    throw new Error(`路径不是文件: ${relativePath}`);
+  }
+
+  const existing = readFrontmatterFile<Record<string, unknown>>(absolutePath);
+  const existingFrontmatter = existing.frontmatter;
+  if (existingFrontmatter.dt === DT_NODE_SCHEMA) {
+    throw new Error(`该文件已经是 dt 节点: ${relativePath}`);
+  }
+
+  const id = generateNextIndexedId(dtRoot);
+  const now = new Date().toISOString();
+  const nextFrontmatter: NodeFrontmatter = {
+    ...existingFrontmatter,
+    dt: DT_NODE_SCHEMA,
+    id,
+    root: opts.root ?? (typeof existingFrontmatter.root === 'boolean' ? existingFrontmatter.root : false),
+    title: opts.title?.trim() || (typeof existingFrontmatter.title === 'string' && existingFrontmatter.title.trim())
+      || deriveTitleFromMarkdown(absolutePath, existing.content),
+    summary: opts.summary ?? (typeof existingFrontmatter.summary === 'string' ? existingFrontmatter.summary : ''),
+    type: opts.type ?? (typeof existingFrontmatter.type === 'string' ? existingFrontmatter.type : 'document'),
+    status: (existingFrontmatter.status === 'pending' ||
+      existingFrontmatter.status === 'in_progress' ||
+      existingFrontmatter.status === 'decided' ||
+      existingFrontmatter.status === 'completed' ||
+      existingFrontmatter.status === 'rejected')
+      ? existingFrontmatter.status
+      : 'pending',
+    edges: normalizeExistingEdges(existingFrontmatter.edges),
+    created: typeof existingFrontmatter.created === 'string' ? existingFrontmatter.created : now,
+  };
+
+  writeFrontmatterFile(absolutePath, nextFrontmatter, existing.content);
+  registerNodePath(id, absolutePath, dtRoot);
+
+  const froms = opts.froms ?? [];
+  for (let i = 0; i < froms.length; i++) {
+    const fromTarget = froms[i];
+    const summary = opts.fromSummaries?.[i] ?? '';
+    const depth = opts.fromDepths?.[i];
+    addEdgeBidirectional(
+      id,
+      { target: fromTarget, type: 'from', summary, ...(depth !== undefined ? { depth } : {}) },
+      dtRoot,
+    );
+  }
+
+  return id;
+}
+
 // ─── 边操作 ──────────────────────────────────────────────────
 
 /**

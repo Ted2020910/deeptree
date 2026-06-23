@@ -1,5 +1,41 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { TreeApiResponse, DtNode, CreateNodeInput } from '../types'
+import type { TreeApiResponse, DtNode, CreateNodeInput, PromoteNodeInput } from '../types'
+
+function reverseEdgeType(type: 'from' | 'to'): 'from' | 'to' {
+  return type === 'from' ? 'to' : 'from'
+}
+
+function removeEdgeFromNodes(
+  nodes: DtNode[],
+  input: { source: string; target: string; type?: 'from' | 'to' },
+): DtNode[] {
+  return nodes.map(node => {
+    if (node.id === input.source) {
+      return {
+        ...node,
+        edges: node.edges.filter(edge => {
+          if (edge.target !== input.target) return true
+          if (input.type !== undefined && edge.type !== input.type) return true
+          return false
+        }),
+      }
+    }
+
+    if (!input.target.includes('::') && node.id === input.target) {
+      const reverseType = input.type ? reverseEdgeType(input.type) : undefined
+      return {
+        ...node,
+        edges: node.edges.filter(edge => {
+          if (edge.target !== input.source) return true
+          if (reverseType !== undefined && edge.type !== reverseType) return true
+          return false
+        }),
+      }
+    }
+
+    return node
+  })
+}
 
 export function useTree(projectId: string) {
   const [data, setData] = useState<TreeApiResponse | null>(null)
@@ -9,7 +45,7 @@ export function useTree(projectId: string) {
   const fetchTree = useCallback(async () => {
     if (!projectId) return
     try {
-      const res = await fetch(`/api/projects/${projectId}/tree`)
+      const res = await fetch(`/api/projects/${projectId}/tree?t=${Date.now()}`, { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = (await res.json()) as TreeApiResponse
       setData(json)
@@ -96,12 +132,42 @@ export function useTree(projectId: string) {
     [projectId, fetchTree],
   )
 
-  const deleteNode = useCallback(
-    async (id: string) => {
-      await jsonFetch(`/api/projects/${projectId}/nodes/${id}`, { method: 'DELETE' })
+  const promoteNode = useCallback(
+    async (input: PromoteNodeInput): Promise<string> => {
+      const data = await jsonFetch(`/api/projects/${projectId}/promote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }) as { id: string }
       await fetchTree()
+      return data.id
     },
     [projectId, fetchTree],
+  )
+
+  const deleteNode = useCallback(
+    async (id: string) => {
+      const previous = data
+      setData(prev => prev
+        ? {
+          ...prev,
+          nodes: prev.nodes
+            .filter(node => node.id !== id)
+            .map(node => ({
+              ...node,
+              edges: node.edges.filter(edge => edge.target !== id),
+            })),
+        }
+        : prev)
+      try {
+      await jsonFetch(`/api/projects/${projectId}/nodes/${id}`, { method: 'DELETE' })
+      await fetchTree()
+      } catch (error) {
+        setData(previous)
+        throw error
+      }
+    },
+    [projectId, fetchTree, data],
   )
 
   const createEdge = useCallback(
@@ -118,12 +184,19 @@ export function useTree(projectId: string) {
 
   const deleteEdge = useCallback(
     async (input: { source: string; target: string; type?: 'from' | 'to' }) => {
+      const previous = data
+      setData(prev => prev ? { ...prev, nodes: removeEdgeFromNodes(prev.nodes, input) } : prev)
+      try {
       const qs = new URLSearchParams({ source: input.source, target: input.target })
       if (input.type) qs.set('type', input.type)
       await jsonFetch(`/api/projects/${projectId}/edges?${qs.toString()}`, { method: 'DELETE' })
       await fetchTree()
+      } catch (error) {
+        setData(previous)
+        throw error
+      }
     },
-    [projectId, fetchTree],
+    [projectId, fetchTree, data],
   )
 
   const updateEdge = useCallback(
@@ -138,5 +211,5 @@ export function useTree(projectId: string) {
     [projectId, fetchTree],
   )
 
-  return { data, loading, error, refresh: fetchTree, updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, updateEdge }
+  return { data, loading, error, refresh: fetchTree, updateFrontmatter, updateContent, createNode, promoteNode, deleteNode, createEdge, deleteEdge, updateEdge }
 }

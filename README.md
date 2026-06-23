@@ -305,17 +305,17 @@ npm run dist:win     # 构建 Windows 应用包
 
 `dt init` 会在项目根目录写入轻量入口文件（如 `CLAUDE.md` / `AGENTS.md`），只告诉 Agent：
 
-1. 加载全局 `$dt` skill
+1. 加载项目级 `dt` skill：Codex 使用 `.agents/skills/dt/SKILL.md`，Claude Code 使用 `.claude/skills/dt/SKILL.md`
 2. 会话开始时先执行 `dt tree` 了解当前状态
 3. 用 `dt show <id>` 查看节点正文与真实路径
 
-对齐原则、写作风格、项目架构说明都放在全局 `dt` skill 中，不再复制到每个项目里。
+对齐原则、写作风格、项目架构说明都放在项目级 `dt` skill 中，跟随项目一起版本化。
 
 ---
 
 ## 节点类型
 
-节点类型是**自由字符串**，无硬性限制。推荐写作风格来自全局 `$dt` skill；可通过 `dt style` 查看当前可用模板。
+节点类型是**自由字符串**，无硬性限制。推荐写作风格来自项目级 `dt` skill；可通过 `dt style` 查看当前可用模板。
 
 > 新建节点不预填任何项目内模板，内容完全自由。
 

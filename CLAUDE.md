@@ -4,7 +4,7 @@
 
 This project uses DT for decision-process memory.
 
-Before making project decisions, load the global `$dt` skill, then run:
+Before making project decisions, load the project `dt` skill at `.claude/skills/dt/SKILL.md`, then run:
 
 ```bash
 dt tree

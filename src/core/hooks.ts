@@ -1,7 +1,7 @@
 /**
  * hooks.ts — project entry file integration
  *
- * Keep project prompts thin. Reusable DT rules live in the global dt skill.
+ * Keep project prompts thin. Reusable DT rules live in project dt skills.
  */
 
 import fs from 'node:fs';
@@ -12,7 +12,7 @@ export const CLAUDE_MD_SECTION = `
 
 This project uses DT for decision-process memory.
 
-Before making project decisions, load the global \`$dt\` skill, then run:
+Before making project decisions, load the project \`dt\` skill at \`.claude/skills/dt/SKILL.md\`, then run:
 
 \`\`\`bash
 dt tree
@@ -26,7 +26,7 @@ export const AGENTS_MD_SECTION = `
 
 This project uses DT for decision-process memory.
 
-Before making project decisions, use the global \`$dt\` skill, then run:
+Before making project decisions, use the project \`$dt\` skill at \`.agents/skills/dt/SKILL.md\`, then run:
 
 \`\`\`bash
 dt tree

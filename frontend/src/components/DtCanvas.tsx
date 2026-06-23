@@ -60,7 +60,7 @@ function computeLayout(dtNodes: DtNode[]): Map<string, { x: number; y: number }>
 function buildEdges(
   dtNodes: DtNode[],
   onCommitSummary?: (source: string, target: string, summary: string) => void,
-  onRequestDelete?: (source: string, target: string) => void,
+  onRequestDelete?: (source: string, target: string, type?: 'from' | 'to') => void,
   editingEdgeKey?: string | null,
   onEditClose?: () => void,
 ): DtFlowEdge[] {
@@ -87,7 +87,7 @@ function buildEdges(
                 ? (next: string) => onCommitSummary(n.id, e.target, next)
                 : undefined,
               onRequestDelete: onRequestDelete
-                ? () => onRequestDelete(n.id, e.target)
+                ? () => onRequestDelete(n.id, e.target, e.type)
                 : undefined,
               externalEdit: editingEdgeKey === key,
               onEditClose,
@@ -114,7 +114,7 @@ interface DtCanvasProps {
   onSelect: (id: string | null, additive: boolean) => void
   layoutTrigger?: number
   onConnect?: (source: string, target: string) => void
-  onDeleteEdge?: (source: string, target: string) => void
+  onDeleteEdge?: (source: string, target: string, type?: 'from' | 'to') => void
   onCommitEdgeSummary?: (source: string, target: string, summary: string) => void
   onAddRoot?: () => void
   onAddNode?: () => void

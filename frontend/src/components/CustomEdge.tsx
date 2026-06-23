@@ -2,23 +2,21 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
-  type EdgeProps,
   type Edge,
+  type EdgeProps,
 } from '@xyflow/react'
+import { X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 export type DtFlowEdgeData = {
   edgeType: 'parent' | 'cross'
   summary: string
-  /** 提交摘要修改（保存到后端） */
   onCommitSummary?: (next: string) => void
-  /** 删除该边（hover label 时的 × 按钮） */
   onRequestDelete?: () => void
-  /** 外部触发：当 true 时进入编辑态（DtCanvas 双击连线时打开） */
   externalEdit?: boolean
-  /** 外部编辑结束后的回调（commit/cancel/blur 都会调） */
   onEditClose?: () => void
 }
+
 export type DtFlowEdge = Edge<DtFlowEdgeData, 'dtEdge'>
 
 function getCssVar(name: string, fallback: string): string {
@@ -49,33 +47,26 @@ export function CustomEdge({
   const isCross = data?.edgeType === 'cross'
   const edgeColor = getCssVar('--edge-color', '#888888')
   const edgeColorDim = getCssVar('--edge-color-dim', '#666666')
-
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(data?.summary ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setDraft(data?.summary ?? '') }, [data?.summary])
-
-  // 响应外部 externalEdit 触发
+  useEffect(() => { if (data?.externalEdit) setEditing(true) }, [data?.externalEdit])
   useEffect(() => {
-    if (data?.externalEdit) setEditing(true)
-  }, [data?.externalEdit])
-
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
+    if (editing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
     }
   }, [editing])
 
   function commit() {
     const next = draft.trim()
-    if (next !== (data?.summary ?? '')) {
-      data?.onCommitSummary?.(next)
-    }
+    if (next !== (data?.summary ?? '')) data?.onCommitSummary?.(next)
     setEditing(false)
     data?.onEditClose?.()
   }
+
   function cancel() {
     setDraft(data?.summary ?? '')
     setEditing(false)
@@ -108,8 +99,8 @@ export function CustomEdge({
               position: 'absolute',
               pointerEvents: 'all',
             }}
-            onDoubleClick={(e) => {
-              e.stopPropagation()
+            onDoubleClick={(event) => {
+              event.stopPropagation()
               if (canEdit) setEditing(true)
             }}
             title={canEdit ? '双击编辑摘要' : undefined}
@@ -119,14 +110,19 @@ export function CustomEdge({
                 ref={inputRef}
                 className="edge-label__input"
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(event) => setDraft(event.target.value)}
                 onBlur={commit}
-                onKeyDown={(e) => {
-                  e.stopPropagation()
-                  if (e.key === 'Enter') { e.preventDefault(); commit() }
-                  else if (e.key === 'Escape') { e.preventDefault(); cancel() }
+                onKeyDown={(event) => {
+                  event.stopPropagation()
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    commit()
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    cancel()
+                  }
                 }}
-                onMouseDown={(e) => e.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
                 placeholder="边摘要"
               />
             ) : (
@@ -137,9 +133,14 @@ export function CustomEdge({
                     className="edge-label__delete"
                     title="删除连接"
                     aria-label="Delete edge"
-                    onClick={(e) => { e.stopPropagation(); data.onRequestDelete!() }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >×</button>
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      data.onRequestDelete?.()
+                    }}
+                    onMouseDown={(event) => event.stopPropagation()}
+                  >
+                    <X size={10} strokeWidth={2.5} />
+                  </button>
                 )}
               </>
             )}

@@ -1,31 +1,37 @@
 /**
  * style.ts — dt style
  *
- * Reads reusable DT writing styles from the global dt skill.
+ * Reads reusable DT writing styles from the project dt skill.
  */
 
 import type { Command } from 'commander';
 import chalk from 'chalk';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import { findDtRoot } from '../core/project.js';
 
-function getGlobalStylesPath(): string {
-  const codexHome = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
-  return path.join(codexHome, 'skills', 'dt', 'references', 'styles.md');
+function getProjectStylesPaths(): string[] {
+  const dtRoot = findDtRoot();
+  const projectDir = dtRoot ? path.dirname(dtRoot) : process.cwd();
+  return [
+    path.join(projectDir, '.agents', 'skills', 'dt', 'references', 'styles.md'),
+    path.join(projectDir, '.claude', 'skills', 'dt', 'references', 'styles.md'),
+  ];
 }
 
 export function registerStyleCommand(program: Command): void {
   program
     .command('style')
-    .description('查看全局 DT 写作风格说明')
+    .description('查看项目级 DT 写作风格说明')
     .action(() => {
-      const stylesPath = getGlobalStylesPath();
+      const stylesPath = getProjectStylesPaths().find(p => fs.existsSync(p));
 
-      if (!fs.existsSync(stylesPath)) {
-        console.log(chalk.yellow('未找到全局 dt skill 写作风格。'));
-        console.log(chalk.dim(`  期望路径: ${stylesPath}`));
-        console.log(chalk.dim('  请安装或创建全局 $dt skill。'));
+      if (!stylesPath) {
+        console.log(chalk.yellow('未找到项目级 dt skill 写作风格。'));
+        for (const expectedPath of getProjectStylesPaths()) {
+          console.log(chalk.dim(`  期望路径: ${expectedPath}`));
+        }
+        console.log(chalk.dim('  请在项目级 dt skill 的 references/styles.md 中添加写作风格。'));
         return;
       }
 

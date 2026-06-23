@@ -1,4 +1,4 @@
-export interface DtEdge {
+﻿export interface DtEdge {
   target: string
   type: 'from' | 'to'
   summary: string
@@ -56,13 +56,24 @@ export interface CreateNodeInput {
   filename?: string
 }
 
+export interface PromoteNodeInput {
+  path: string
+  type?: string
+  title?: string
+  summary?: string
+  froms?: string[]
+  root?: boolean
+}
+
 export interface SaveFns {
   updateFrontmatter: (id: string, updates: Partial<Pick<DtNode, 'title' | 'summary' | 'status' | 'type'>>) => Promise<void>
   updateContent: (id: string, content: string) => Promise<void>
   createNode: (input: CreateNodeInput) => Promise<string>
+  promoteNode?: (input: PromoteNodeInput) => Promise<string>
   deleteNode: (id: string) => Promise<void>
   createEdge: (input: { source: string; target: string; type: 'from' | 'to'; summary?: string }) => Promise<void>
   deleteEdge: (input: { source: string; target: string; type?: 'from' | 'to' }) => Promise<void>
+  requestDeleteEdge?: (input: { source: string; target: string; type?: 'from' | 'to' }) => Promise<void>
   updateEdge: (input: { source: string; target: string; type?: 'from' | 'to'; summary: string }) => Promise<void>
 }
 
@@ -76,3 +87,4 @@ export interface ProjectInfo {
 export interface ProjectsApiResponse {
   projects: ProjectInfo[]
 }
+

@@ -16,6 +16,7 @@ import {
   updateNodeFields,
   updateNodeContent,
   createNode,
+  promoteMarkdownToNode,
   deleteNode,
   addEdgeBidirectional,
   removeEdgeBidirectional,
@@ -23,7 +24,7 @@ import {
 } from '../core/node.js';
 import { buildForest, buildTree } from '../utils/render.js';
 import { listProjects, findProjectById } from '../core/registry.js';
-import { gitAutoCommit } from '../core/git.js';
+import { gitAutoCommitLater as gitAutoCommit } from '../core/git.js';
 import type { Edge } from '../types/index.js';
 import { syncNodeIndex } from '../core/node-index.js';
 import { buildProjectFileTree, createProjectFolder } from '../core/file-tree.js';
@@ -212,6 +213,47 @@ export async function handleApiRequest(
         dtRoot,
       });
       gitAutoCommit(dtRoot, `add ${type} ${id}: ${title}`);
+      json(res, { ok: true, id }, 201);
+      return true;
+    }
+
+    // POST /api/projects/:id/promote  将现有 Markdown 转为节点
+    const projectPromoteMatch = pathname.match(/^\/api\/projects\/([^/]+)\/promote$/);
+    if (method === 'POST' && projectPromoteMatch) {
+      const projectId = projectPromoteMatch[1];
+      const dtRoot = resolveDtRootForProject(projectId);
+      if (!dtRoot) { error(res, `项目 ${projectId} 不存在或路径无效`, 404); return true; }
+      const body = await parseBody(req);
+      const filePath = typeof body.path === 'string' ? body.path.trim() : '';
+      if (!filePath) { error(res, 'path 字段必填'); return true; }
+      const type = typeof body.type === 'string' && body.type.trim() ? body.type.trim() : undefined;
+      const title = typeof body.title === 'string' && body.title.trim() ? body.title.trim() : undefined;
+      const summary = typeof body.summary === 'string' ? body.summary : undefined;
+      const root = body.root === true ? true : body.root === false ? false : undefined;
+      const fromsRaw = Array.isArray(body.froms) ? body.froms : [];
+      const froms: string[] = [];
+      for (const v of fromsRaw) {
+        if (typeof v === 'string' && v.trim()) froms.push(v.trim());
+      }
+      for (const f of froms) {
+        if (!f.includes('::') && !nodeExists(f, dtRoot)) {
+          error(res, `父节点 ${f} 不存在`, 400);
+          return true;
+        }
+      }
+      const fromSummariesRaw = Array.isArray(body.fromSummaries) ? body.fromSummaries : [];
+      const fromSummaries = fromSummariesRaw.map((s) => (typeof s === 'string' ? s : ''));
+      const id = promoteMarkdownToNode({
+        path: filePath,
+        type,
+        title,
+        summary,
+        root,
+        froms,
+        fromSummaries,
+        dtRoot,
+      });
+      gitAutoCommit(dtRoot, `promote ${id}`);
       json(res, { ok: true, id }, 201);
       return true;
     }

@@ -1,8 +1,14 @@
 node_modules/
 dist/
 *.tsbuildinfo
-.claude/
+__pycache__/
+*.pyc
+.claude/*
+!.claude/skills/
+!.claude/skills/dt/
+!.claude/skills/dt/**
 .dt/*
 !.dt/tree.yaml
 !.dt/index.yaml
 .qoder/
+docs/*

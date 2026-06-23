@@ -1,111 +1,147 @@
 version: 1
-updated: "2026-06-23T00:44:17.461Z"
+updated: "2026-06-23T08:08:49.729Z"
 nodes:
   "002":
     id: "002"
     path: 项目思想/002-为什么要有dt这个项目.md
-    mtimeMs: 1782175291879.8652
-    hash: 548b5d51bb6dec45bc297f784464379b3db18a8e
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782198941771.7898
+    hash: 91962448964ddeb6423993f0896cf667ce27240b
+    indexedAt: "2026-06-23T08:08:49.722Z"
   "003":
     id: "003"
     path: 项目思想/003-人类真实的工作决策模式是什么.md
-    mtimeMs: 1782175291880.8396
-    hash: 0481cb8ba40fec73fd15f7d3811469f70863ad84
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782179921588.3198
+    hash: 6856fd9a62e0f9af3911606fa66889969caccf77
+    indexedAt: "2026-06-23T08:08:49.723Z"
   "004":
     id: "004"
     path: 项目思想/004-dt本质要做什么.md
-    mtimeMs: 1782175291881.3413
-    hash: 57c1e4c4a0bc09f7c2ad4846d3d02689b91fe820
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782179921589.3218
+    hash: 68730cfb8821e8b61c4325c6dbe1a3b1ff8edad5
+    indexedAt: "2026-06-23T08:08:49.723Z"
   "005":
     id: "005"
     path: 项目思想/005-dt工具应该实现成什么样子.md
-    mtimeMs: 1782175291881.746
-    hash: f71da627831b83eaa457210a25d891c2ad1a4b7c
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782179921590.319
+    hash: 98517f38d535b1681802121075bc4d8e69c1c201
+    indexedAt: "2026-06-23T08:08:49.724Z"
   "006":
     id: "006"
     path: 项目思想/006-AI-Agent的能力边界与运作方式.md
-    mtimeMs: 1782175291882.1216
-    hash: 0311306e5d74ab482c87a775a3792090646a00be
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782183820453.4988
+    hash: 6d76f43ca59133bede9601a22f003bdb1a1fe202
+    indexedAt: "2026-06-23T08:08:49.725Z"
   "007":
     id: "007"
     path: 项目思想/007-人类在使用AI工具时的工作方式.md
-    mtimeMs: 1782175291882.53
-    hash: 7b6332caae1e1dbf03b1c0ea8367eb88e600be0e
-    indexedAt: "2026-06-23T00:44:17.461Z"
+    mtimeMs: 1782179921591.3247
+    hash: 6815578d08c8358ad794ccb8049406d0a0ab00e2
+    indexedAt: "2026-06-23T08:08:49.725Z"
   "008":
     id: "008"
     path: src/commands/008-CLI命令设计.md
-    mtimeMs: 1782175039751.393
-    hash: 6b77dff47de9b2cff4f4ec8e8c52c5ed70cb6d05
-    indexedAt: "2026-06-23T00:44:17.459Z"
+    mtimeMs: 1782179921565.3127
+    hash: d4a874212568b2b72f23802b5e365e7d2031450d
+    indexedAt: "2026-06-23T08:08:49.718Z"
   "009":
     id: "009"
     path: src/core/009-核心数据模型.md
-    mtimeMs: 1782138559556.9744
-    hash: 0d2efbec10015568496ecd2582a4e8cb2238f11a
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782179921570.3164
+    hash: 78e65619edfe3bd48bc9746b2ddf5f22b3d5a0e0
+    indexedAt: "2026-06-23T08:08:49.719Z"
   "010":
     id: "010"
     path: 项目思想/010-dt项目改造与实现.md
-    mtimeMs: 1782175039752.4404
-    hash: 43e87e474a2d6a69abe701e7abd7a81dfd9ffaba
-    indexedAt: "2026-06-23T00:44:17.461Z"
+    mtimeMs: 1782183820450.4995
+    hash: a00cc2679209c42ee4d8e5055584e324f78f1baf
+    indexedAt: "2026-06-23T08:08:49.726Z"
   "011":
     id: "011"
     path: 项目思想/011-Agent协议优化.md
-    mtimeMs: 1782175291883.5867
-    hash: 74a7089519cfbbbd2687fef7b66215d9a105baa5
-    indexedAt: "2026-06-23T00:44:17.461Z"
+    mtimeMs: 1782194270549.3997
+    hash: ac173d1c0dd5fac9ebb991fc0e4a1dbf8359bd85
+    indexedAt: "2026-06-23T08:08:49.726Z"
   "012":
     id: "012"
     path: src/core/012-新建节点的默认行为.md
-    mtimeMs: 1782146670992.3389
-    hash: 5556cb09a7c3d2feb656348cdfe930571634af2b
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782183820456.4973
+    hash: fd52bbb912e790aa623b06e2e99e57114cec3228
+    indexedAt: "2026-06-23T08:08:49.720Z"
   "013":
     id: "013"
     path: frontend/src/013-前端展示.md
-    mtimeMs: 1782175377805.2546
-    hash: f8cd17ed57ec69590d51dc0aee4c4f9a96501d04
-    indexedAt: "2026-06-23T00:44:17.459Z"
+    mtimeMs: 1782179921555.3103
+    hash: 9a6151d83d57a2ab1a8015a024460dd624fdda59
+    indexedAt: "2026-06-23T08:08:49.716Z"
   "014":
     id: "014"
     path: src/server/014-多项目管理.md
-    mtimeMs: 1782175377806.9604
-    hash: 7223b157cf68a1d7c98e97c1e59d88a0a61ff058
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782200570647.164
+    hash: c4d481282f6eba6d47e7eda56b2147003799cc76
+    indexedAt: "2026-06-23T08:08:49.722Z"
   "015":
     id: "015"
     path: frontend/src/components/015-前端布局算法设计.md
-    mtimeMs: 1782175291883.1833
-    hash: 544bdb02c36ccba219a79dc2b7a91bcc73b9448d
-    indexedAt: "2026-06-23T00:44:17.459Z"
+    mtimeMs: 1782179921557.3123
+    hash: f2495d5ccf2477699bac5ad87657a8f7c3a31ed0
+    indexedAt: "2026-06-23T08:08:49.717Z"
   "016":
     id: "016"
     path: 项目思想/016-项目介绍.md
-    mtimeMs: 1782175197548.488
-    hash: 0d4682f8db459e7ac22d9c2fb36122ef6eb3d2fb
-    indexedAt: "2026-06-23T00:44:17.461Z"
+    mtimeMs: 1782179921592.3247
+    hash: 9e026fcfa26844142493667d6685d5f70926fd4b
+    indexedAt: "2026-06-23T08:08:49.727Z"
   "017":
     id: "017"
     path: 项目思想/017-受众定义与痛点分析.md
-    mtimeMs: 1782175377806.1384
-    hash: baa8ca006b0c191e0d4f8a608fea00c69281b3c9
-    indexedAt: "2026-06-23T00:44:17.461Z"
+    mtimeMs: 1782179921592.3247
+    hash: 4856cea410ad29c3bcea00194b09ee352dae29cf
+    indexedAt: "2026-06-23T08:08:49.728Z"
   "018":
     id: "018"
     path: 项目思想/018-GitHub-README改写.md
-    mtimeMs: 1782175377806.6296
-    hash: a8b817060377ed65ef4a71246e4e5e4bbdefb542
-    indexedAt: "2026-06-23T00:44:17.461Z"
+    mtimeMs: 1782179921593.3186
+    hash: d7a61722fc71a6826690e4b826699c2e3bdb1b74
+    indexedAt: "2026-06-23T08:08:49.729Z"
   "019":
     id: "019"
     path: src/core/019-分布式节点文件.md
-    mtimeMs: 1782175431247.7427
-    hash: 2cddd71ebe8c374c8900cc9cbc8acc7f79f69dfe
-    indexedAt: "2026-06-23T00:44:17.460Z"
+    mtimeMs: 1782194271604.43
+    hash: 2e5ee7651dff6efa490b7b9b0ef8adf104c7c948
+    indexedAt: "2026-06-23T08:08:49.721Z"
+  "023":
+    id: "023"
+    path: .dt/nodes/023.md
+    mtimeMs: 1782180711521.6177
+    hash: fd2eebd3ce58a9f039334c9d34bedbd1321f5743
+    indexedAt: "2026-06-23T08:08:49.669Z"
+  style-001:
+    id: style-001
+    path: .dt/nodes/style-001.md
+    mtimeMs: 1782180711560.611
+    hash: 93581d6ff82085cc3ff436ce689d5bec197c8765
+    indexedAt: "2026-06-23T08:08:49.670Z"
+  style-002:
+    id: style-002
+    path: .dt/nodes/style-002.md
+    mtimeMs: 1782180711593.976
+    hash: 011c926735eeaf18111fe777f1c264fbfef47641
+    indexedAt: "2026-06-23T08:08:49.671Z"
+  style-003:
+    id: style-003
+    path: .dt/nodes/style-003.md
+    mtimeMs: 1782180711614.9849
+    hash: f4db44507488a536967edbec5d013a8880bece31
+    indexedAt: "2026-06-23T08:08:49.671Z"
+  style-004:
+    id: style-004
+    path: .dt/nodes/style-004.md
+    mtimeMs: 1782180711627.8938
+    hash: c48949c1d9dc4e015da17ef837d2e58ccc5f5ab1
+    indexedAt: "2026-06-23T08:08:49.672Z"
+  style-005:
+    id: style-005
+    path: .dt/nodes/style-005.md
+    mtimeMs: 1782180711645.479
+    hash: 51d869f99bad86a43b4494f11069a4e270365e76
+    indexedAt: "2026-06-23T08:08:49.673Z"

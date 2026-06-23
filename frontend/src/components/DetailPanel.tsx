@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+﻿import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { marked } from 'marked'
 import type { DtNode, SaveFns } from '../types'
 
@@ -125,9 +125,12 @@ export function DetailPanel({ node, allNodes, saveFns, collapsed, onToggleCollap
   }, [editingContent])
 
   const handleDeleteEdge = useCallback(async (target: string, type: 'from' | 'to') => {
-    if (!confirm(`删除 ${node.id} ${EDGE_ARROW[type]} ${target} ？`)) return
-    try { await saveFns.deleteEdge({ source: node.id, target, type }) }
-    catch (e) { alert(`删除失败: ${String(e)}`) }
+    try {
+      if (saveFns.requestDeleteEdge) await saveFns.requestDeleteEdge({ source: node.id, target, type })
+      else await saveFns.deleteEdge({ source: node.id, target, type })
+    } catch (e) {
+      alert(`delete failed: ${String(e)}`)
+    }
   }, [node.id, saveFns])
 
   if (collapsed) {
@@ -470,3 +473,4 @@ function EdgeItem({ arrow, targetId, targetTitle, summary, clickable, onSelectTa
     </div>
   )
 }
+

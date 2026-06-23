@@ -7,11 +7,14 @@ import {
   FolderOpen,
   GitBranchPlus,
   Plus,
+  RotateCw,
+  WandSparkles,
 } from 'lucide-react'
 import type { FileTreeEntry } from '../types'
 
 interface ProjectExplorerProps {
   root?: FileTreeEntry
+  width?: number
   loading?: boolean
   error?: string | null
   selectedNodeId?: string | null
@@ -20,6 +23,7 @@ interface ProjectExplorerProps {
   onSelectPath: (path: string) => void
   onCreateNode: (directory: string) => void
   onCreateFolder: (directory: string) => void
+  onPromoteMarkdown: (path: string) => void
   onRefresh?: () => void
 }
 
@@ -28,10 +32,6 @@ function parentDirectory(path: string): string {
   const parts = path.split('/').filter(Boolean)
   parts.pop()
   return parts.length === 0 ? '.' : parts.join('/')
-}
-
-function directoryFor(entry: FileTreeEntry): string {
-  return entry.type === 'directory' ? entry.path : parentDirectory(entry.path)
 }
 
 function flattenDirectories(root?: FileTreeEntry): string[] {
@@ -58,6 +58,7 @@ function EntryRow({
   onSelectPath,
   onCreateNode,
   onCreateFolder,
+  onPromoteMarkdown,
 }: {
   entry: FileTreeEntry
   depth: number
@@ -69,6 +70,7 @@ function EntryRow({
   onSelectPath: (path: string) => void
   onCreateNode: (directory: string) => void
   onCreateFolder: (directory: string) => void
+  onPromoteMarkdown: (path: string) => void
 }) {
   const isDir = entry.type === 'directory'
   const isOpen = expanded.has(entry.path)
@@ -98,7 +100,10 @@ function EntryRow({
       >
         <button
           className="project-explorer__twisty"
-          onClick={(e) => { e.stopPropagation(); if (isDir && hasChildren) onToggle(entry.path) }}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (isDir && hasChildren) onToggle(entry.path)
+          }}
           disabled={!isDir || !hasChildren}
           aria-label={isOpen ? 'Collapse folder' : 'Expand folder'}
         >
@@ -113,15 +118,37 @@ function EntryRow({
           <span className="project-explorer__actions">
             <button
               title="在此新建 DT 节点"
-              onClick={(e) => { e.stopPropagation(); onCreateNode(entry.path) }}
+              onClick={(event) => {
+                event.stopPropagation()
+                onCreateNode(entry.path)
+              }}
+              aria-label="Create DT node here"
             >
               <GitBranchPlus />
             </button>
             <button
               title="新建文件夹"
-              onClick={(e) => { e.stopPropagation(); onCreateFolder(entry.path) }}
+              onClick={(event) => {
+                event.stopPropagation()
+                onCreateFolder(entry.path)
+              }}
+              aria-label="Create folder here"
             >
               <Plus />
+            </button>
+          </span>
+        )}
+        {!isDir && entry.isMarkdown && !entry.dtNode && (
+          <span className="project-explorer__actions project-explorer__actions--single">
+            <button
+              title="转为 DT 节点"
+              onClick={(event) => {
+                event.stopPropagation()
+                onPromoteMarkdown(entry.path)
+              }}
+              aria-label="Promote Markdown to DT node"
+            >
+              <WandSparkles />
             </button>
           </span>
         )}
@@ -139,6 +166,7 @@ function EntryRow({
           onSelectPath={onSelectPath}
           onCreateNode={onCreateNode}
           onCreateFolder={onCreateFolder}
+          onPromoteMarkdown={onPromoteMarkdown}
         />
       ))}
     </>
@@ -147,6 +175,7 @@ function EntryRow({
 
 export function ProjectExplorer({
   root,
+  width,
   loading,
   error,
   selectedNodeId,
@@ -155,6 +184,7 @@ export function ProjectExplorer({
   onSelectPath,
   onCreateNode,
   onCreateFolder,
+  onPromoteMarkdown,
   onRefresh,
 }: ProjectExplorerProps) {
   const directories = useMemo(() => flattenDirectories(root), [root])
@@ -202,10 +232,12 @@ export function ProjectExplorer({
   }
 
   return (
-    <aside className="project-explorer">
+    <aside className="project-explorer" style={{ width: width ?? 300 }}>
       <div className="project-explorer__header">
         <span>PROJECT</span>
-        <button title="刷新文件树" onClick={onRefresh}>↻</button>
+        <button title="刷新文件树" onClick={onRefresh} aria-label="Refresh file tree">
+          <RotateCw />
+        </button>
       </div>
       <div className="project-explorer__toolbar">
         <button onClick={() => handleCreateNode(selectedDirectory)}>
@@ -226,12 +258,11 @@ export function ProjectExplorer({
             selectedNodeId={selectedNodeId}
             selectedPath={selectedPath}
             onToggle={toggle}
-            onSelectNode={(id) => {
-              onSelectNode(id)
-            }}
+            onSelectNode={onSelectNode}
             onSelectPath={onSelectPath}
             onCreateNode={handleCreateNode}
             onCreateFolder={handleCreateFolder}
+            onPromoteMarkdown={onPromoteMarkdown}
           />
         )}
       </div>

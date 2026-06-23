@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+﻿import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTree } from './hooks/useTree'
 import { useFileTree } from './hooks/useFileTree'
 import { useProjects } from './hooks/useProjects'
@@ -8,6 +8,8 @@ import { StatusBar } from './components/StatusBar'
 import { ProjectSelector } from './components/ProjectSelector'
 import { CommandPalette } from './components/CommandPalette'
 import { ProjectExplorer } from './components/ProjectExplorer'
+import { FileActionModal } from './components/FileActionModal'
+import { DeleteConfirmModal, type DeleteTarget } from './components/DeleteConfirmModal'
 import type { DtNode } from './types'
 
 function useTheme() {
@@ -94,14 +96,47 @@ export default function App() {
   const [layoutTrigger, setLayoutTrigger] = useState(0)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const [explorerWidth, setExplorerWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('dt-explorer-width')
+    return saved ? Math.max(220, Math.min(560, Number(saved))) : 300
+  })
   const [panelWidth, setPanelWidth] = useState<number>(() => {
     const saved = localStorage.getItem('dt-panel-width')
     return saved ? Math.max(280, Math.min(900, Number(saved))) : 400
   })
   const [cmdkOpen, setCmdkOpen] = useState(false)
+  const [actionModal, setActionModal] = useState<null | { mode: 'node' | 'folder' | 'promote'; path: string }>(null)
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { theme, toggle } = useTheme()
   const triggerLayout = useCallback(() => setLayoutTrigger(n => n + 1), [])
+
+  const handleExplorerResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = explorerWidth
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.max(220, Math.min(560, startW + (ev.clientX - startX)))
+      setExplorerWidth(next)
+    }
+    const onUp = () => {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      setExplorerWidth(current => {
+        const finalW = Math.round(current)
+        localStorage.setItem('dt-explorer-width', String(finalW))
+        return finalW
+      })
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [explorerWidth])
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -138,7 +173,7 @@ export default function App() {
 
   const {
     data, loading: treeLoading, error: treeError,
-    updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, updateEdge,
+    updateFrontmatter, updateContent, createNode, promoteNode, deleteNode, createEdge, deleteEdge, updateEdge,
   } = useTree(currentProjectId)
   const {
     data: fileTreeData,
@@ -161,6 +196,8 @@ export default function App() {
     setSelectedPath('.')
     setMultiSelected(new Set())
     setEditingNodeId(null)
+    setDeleteTarget(null)
+    setDeleteError('')
     history.replaceState(null, '', `?project=${id}`)
   }
 
@@ -195,6 +232,8 @@ export default function App() {
   /** Create a node on the server with empty title, then put it in inline-edit mode. */
   async function createInlineNode(opts: {
     type: string
+    title?: string
+    summary?: string
     froms?: string[]
     root?: boolean
     directory?: string
@@ -202,8 +241,8 @@ export default function App() {
     try {
       const newId = await createNode({
         type: opts.type,
-        title: '未命名',
-        summary: '',
+        title: opts.title ?? '未命名',
+        summary: opts.summary ?? '',
         froms: opts.froms,
         root: opts.root,
         directory: createDirectoryFromPath(opts.directory ?? selectedPath),
@@ -246,17 +285,9 @@ export default function App() {
       }
     },
     onDelete: async (id: string) => {
-      const me = nodes.find(n => n.id === id)
-      if (!confirm(`删除节点 #${id}「${me?.title ?? ''}」？`)) return
-      try {
-        await deleteNode(id)
-        if (selectedId === id) setSelectedId(null)
-        if (editingNodeId === id) setEditingNodeId(null)
-        setMultiSelected(prev => {
-          if (!prev.has(id)) return prev
-          const next = new Set(prev); next.delete(id); return next
-        })
-      } catch (e) { alert(`删除失败: ${String(e)}`) }
+      setDeleteError('')
+      setDeleteBusy(false)
+      setDeleteTarget({ kind: 'node', id })
     },
     onRenameCommit: async (id: string, newTitle: string) => {
       try {
@@ -280,42 +311,90 @@ export default function App() {
   }, [createNode, selectedPath]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateNodeAtDirectory = useCallback(async (directory: string) => {
-    const safeDirectory = createDirectoryFromPath(directory)
-    setSelectedPath(safeDirectory)
-    await createInlineNode({ type: 'explore', directory: safeDirectory })
-  }, [createNode]) // eslint-disable-line react-hooks/exhaustive-deps
+    setActionModal({ mode: 'node', path: createDirectoryFromPath(directory) })
+  }, [])
 
   const handleCreateFolderAtDirectory = useCallback(async (directory: string) => {
-    const name = prompt('文件夹名称')
-    if (!name?.trim()) return
-    const safeDirectory = createDirectoryFromPath(directory)
-    const base = safeDirectory === '.' ? '' : `${safeDirectory}/`
-    try {
-      const created = await createFolder(`${base}${name.trim()}`)
-      setSelectedPath(created)
-      await refreshFileTree()
-    } catch (e) {
-      alert(`创建文件夹失败: ${String(e)}`)
-    }
-  }, [createFolder, refreshFileTree])
+    setActionModal({ mode: 'folder', path: createDirectoryFromPath(directory) })
+  }, [])
+
+  const handlePromoteMarkdown = useCallback(async (markdownPath: string) => {
+    setActionModal({ mode: 'promote', path: markdownPath })
+  }, [])
 
   /* ─── Connect / disconnect edges ─────────────────────────── */
 
   const handleEdgeConnect = useCallback(async (source: string, target: string) => {
     try { await createEdge({ source, target, type: 'to', summary: '' }) }
-    catch (e) { alert(`连边失败: ${String(e)}`) }
+    catch (e) { alert(`connect failed: ${String(e)}`) }
   }, [createEdge])
-
-  const handleEdgeDelete = useCallback(async (source: string, target: string) => {
-    if (!confirm(`删除连线 ${source} → ${target}？`)) return
-    try { await deleteEdge({ source, target }) }
-    catch (e) { alert(`删除失败: ${String(e)}`) }
-  }, [deleteEdge])
-
+  const handleEdgeDelete = useCallback((source: string, target: string, type?: 'from' | 'to') => {
+    setDeleteError('')
+    setDeleteBusy(false)
+    setDeleteTarget({ kind: 'edge', source, target, type })
+  }, [])
+  const requestEdgeDelete = useCallback(async ({ source, target, type }: { source: string; target: string; type?: 'from' | 'to' }) => {
+    handleEdgeDelete(source, target, type)
+  }, [handleEdgeDelete])
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget || deleteBusy) return
+    setDeleteBusy(true)
+    setDeleteError('')
+    try {
+      if (deleteTarget.kind === 'edge') {
+        await deleteEdge({
+          source: deleteTarget.source,
+          target: deleteTarget.target,
+          type: deleteTarget.type,
+        })
+      } else {
+        await deleteNode(deleteTarget.id)
+        if (selectedId === deleteTarget.id) setSelectedId(null)
+        if (editingNodeId === deleteTarget.id) setEditingNodeId(null)
+        setMultiSelected(prev => {
+          if (!prev.has(deleteTarget.id)) return prev
+          const next = new Set(prev)
+          next.delete(deleteTarget.id)
+          return next
+        })
+      }
+      setDeleteTarget(null)
+    } catch (e) {
+      setDeleteError(`删除失败：${String(e)}`)
+    } finally {
+      setDeleteBusy(false)
+    }
+  }, [deleteBusy, deleteEdge, deleteNode, deleteTarget, editingNodeId, selectedId])
   const handleEdgeCommitSummary = useCallback(async (source: string, target: string, summary: string) => {
     try { await updateEdge({ source, target, type: 'to', summary }) }
     catch (e) { alert(`保存失败: ${String(e)}`) }
   }, [updateEdge])
+
+  const handleConfirmAction = useCallback(async (input: { type: string; title: string; summary: string; directory: string; root?: boolean }) => {
+    const safeDirectory = createDirectoryFromPath(input.directory)
+    setSelectedPath(safeDirectory)
+    await createInlineNode({
+      type: input.type,
+      title: input.title,
+      root: input.root,
+      directory: safeDirectory,
+      summary: input.summary,
+    })
+  }, [createInlineNode])
+
+  const handleCreateFolderConfirm = useCallback(async (folderPath: string) => {
+    const created = await createFolder(folderPath)
+    setSelectedPath(created)
+    await refreshFileTree()
+  }, [createFolder, refreshFileTree])
+
+  const handlePromoteConfirm = useCallback(async (input: { path: string; type: string; title: string; summary: string; root?: boolean }) => {
+    await promoteNode({
+      ...input,
+      root: input.root ?? false,
+    })
+    await refreshFileTree()
+  }, [promoteNode, refreshFileTree])
 
   /* ─── Export / import ─────────────────────────── */
 
@@ -522,6 +601,7 @@ export default function App() {
       <div className="app-body">
         <ProjectExplorer
           root={fileTreeData?.root}
+          width={explorerWidth}
           loading={fileTreeLoading}
           error={fileTreeError}
           selectedNodeId={selectedId}
@@ -530,7 +610,14 @@ export default function App() {
           onSelectNode={(id) => handleSelect(id, false)}
           onCreateNode={handleCreateNodeAtDirectory}
           onCreateFolder={handleCreateFolderAtDirectory}
+          onPromoteMarkdown={handlePromoteMarkdown}
           onRefresh={refreshFileTree}
+        />
+        <div
+          className="project-explorer-resize-handle"
+          onMouseDown={handleExplorerResizeStart}
+          title="拖拽调整项目文件夹宽度"
+          aria-label="Resize project explorer"
         />
         <DtCanvas
           dtNodes={nodes}
@@ -554,7 +641,7 @@ export default function App() {
               allNodes={nodes}
               collapsed={panelCollapsed}
               onToggleCollapse={() => setPanelCollapsed(c => !c)}
-              saveFns={{ updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, updateEdge }}
+              saveFns={{ updateFrontmatter, updateContent, createNode, deleteNode, createEdge, deleteEdge, requestDeleteEdge: requestEdgeDelete, updateEdge }}
               onSelectNode={(id) => handleSelect(id, false)}
               width={panelWidth}
             />
@@ -577,6 +664,40 @@ export default function App() {
           ]}
         />
       )}
+
+      <FileActionModal
+        open={!!actionModal}
+        mode={actionModal?.mode ?? 'node'}
+        projectPath={selectedPath}
+        nodes={nodes}
+        onClose={() => setActionModal(null)}
+        onCreateNode={async (input) => {
+          await handleConfirmAction({
+            ...input,
+            directory: actionModal?.path ?? selectedPath,
+          })
+        }}
+        onCreateFolder={handleCreateFolderConfirm}
+        onPromoteMarkdown={handlePromoteConfirm}
+      />
+      {deleteTarget && (
+        <DeleteConfirmModal
+          target={deleteTarget}
+          sourceLabel={deleteTarget.kind === 'edge' ? nodes.find(n => n.id === deleteTarget.source)?.title : undefined}
+          targetLabel={deleteTarget.kind === 'edge' ? nodes.find(n => n.id === deleteTarget.target)?.title : undefined}
+          nodeTitle={deleteTarget.kind === 'node' ? nodes.find(n => n.id === deleteTarget.id)?.title : undefined}
+          nodeMeta={deleteTarget.kind === 'node' ? nodes.find(n => n.id === deleteTarget.id)?.type : undefined}
+          busy={deleteBusy}
+          error={deleteError}
+          onClose={() => {
+            if (deleteBusy) return
+            setDeleteTarget(null)
+            setDeleteError('')
+          }}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </>
   )
 }
+

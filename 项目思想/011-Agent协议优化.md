@@ -1,7 +1,7 @@
 ---
 id: '011'
 title: Agent入口协议优化——如何引导Agent正确使用dt
-summary: 项目入口文件保持轻量，只指向全局 dt skill 和 dt tree；详细协议与模板沉淀在全局 skill
+summary: 项目入口文件只保留最小引导，明确使用项目级 Codex/Claude dt skills 并运行 dt tree
 type: subproblem
 status: completed
 edges:
@@ -18,8 +18,8 @@ dt: node/v1
 
 - CLAUDE.md / AGENTS.md 是 Agent 收到的项目入口指令，直接影响 Agent 的行为模式
 - 旧方案把大量工具说明、工作方式和节点设计原则复制进每个项目，容易重复、过期、难以全局升级
-- 新方案让项目入口文件保持轻量：提示 Agent 加载全局 `$dt` skill，然后运行 `dt tree`
-- 核心问题：**入口文件只负责引导，详细协议、schema、模板与写作风格应该放在全局 skill**
+- 新方案让项目入口文件保持轻量：提示 Agent 加载当前项目内对应的 `dt` skill，然后运行 `dt tree`
+- 核心问题：**入口文件只负责引导，详细协议、schema、模板与写作风格应该放在可版本化的项目级 skill**
 - Agent 的行为受提示词驱动，提示词越具体，行为越可预期
 
 ## 当前内容的缺口
@@ -104,7 +104,8 @@ Agent 应该主动：
 ## 当前结论
 这些问题已经形成当前落地方案：
 
-- `CLAUDE.md` / `AGENTS.md` 保持很短，只告诉 Agent 使用全局 `$dt` skill 并运行 `dt tree`。
-- 具体协议、写作风格、模板和分布式节点说明放在全局 `dt` skill。
-- 项目本地只保存项目特定的 DT 节点内容，不重复维护通用模板。
+- `CLAUDE.md` / `AGENTS.md` 保持很短，只告诉 Agent 使用项目级 `dt` skill 并运行 `dt tree`。
+- Codex 读取 `.agents/skills/dt/SKILL.md`，Claude Code 读取 `.claude/skills/dt/SKILL.md`。
+- 具体协议、写作风格、模板和分布式节点说明放在项目内可同步的 `dt` skill 中。
+- 项目本地保存项目特定的 DT 节点内容，也保存两类 Agent 可加载的入口 skill。
 - `dt show <id>` 展示节点实际 Markdown 路径，Agent 应读取实际路径而不是假设 `.dt/nodes/`。

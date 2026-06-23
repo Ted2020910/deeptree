@@ -1,0 +1,4 @@
+interface:
+  display_name: "DT"
+  short_description: "Use Decision Tree project memory"
+  default_prompt: "Use the dt skill to inspect and update this project's decision tree before making project decisions."

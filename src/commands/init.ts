@@ -2,7 +2,7 @@
  * init.ts — dt init
  *
  * Initializes project-local DT metadata only. Reusable DT instructions and
- * style templates live in the global dt skill.
+ * style templates live in the project dt skill.
  */
 
 import type { Command } from 'commander';
@@ -65,7 +65,7 @@ export function registerInitCommand(program: Command): void {
       console.log(chalk.green('✓ 决策树项目已初始化'));
       console.log('');
       console.log(`  项目: ${chalk.bold(name)}`);
-      console.log(chalk.dim('  可复用工作流与写作风格来自全局 $dt skill。'));
+      console.log(chalk.dim('  可复用工作流与写作风格来自项目级 dt skill。'));
       console.log('');
     });
 }
