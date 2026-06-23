@@ -2,5 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .claude/
-.dt/
+.dt/*
+!.dt/tree.yaml
+!.dt/index.yaml
 .qoder/

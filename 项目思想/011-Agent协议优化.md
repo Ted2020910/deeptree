@@ -1,7 +1,7 @@
 ---
 id: '011'
-title: CLAUDE.md协议优化——如何引导Agent正确使用dt
-summary: 已更新命令表（--from 替代 --parent）、工作方式、frontmatter 字段说明、边双向性说明
+title: Agent入口协议优化——如何引导Agent正确使用dt
+summary: 项目入口文件保持轻量，只指向全局 dt skill 和 dt tree；详细协议与模板沉淀在全局 skill
 type: subproblem
 status: completed
 edges:
@@ -12,20 +12,21 @@ created: '2026-04-26T17:01:36.699Z'
 root: false
 dt: node/v1
 ---
-# CLAUDE.md协议优化——如何引导Agent正确使用dt
+# Agent入口协议优化——如何引导Agent正确使用dt
 
 ## 已知前提
 
-- CLAUDE.md 是 Agent 收到的系统指令，直接影响 Agent 的行为模式
-- 现有 CLAUDE.md 内容：工具说明（命令表）+ 工作方式（看/想/写）+ 节点设计原则
-- 核心问题：**只告诉了 Agent 有什么工具，没有告诉 Agent 怎么用、什么时候用、用到什么程度**
+- CLAUDE.md / AGENTS.md 是 Agent 收到的项目入口指令，直接影响 Agent 的行为模式
+- 旧方案把大量工具说明、工作方式和节点设计原则复制进每个项目，容易重复、过期、难以全局升级
+- 新方案让项目入口文件保持轻量：提示 Agent 加载全局 `$dt` skill，然后运行 `dt tree`
+- 核心问题：**入口文件只负责引导，详细协议、schema、模板与写作风格应该放在全局 skill**
 - Agent 的行为受提示词驱动，提示词越具体，行为越可预期
 
 ## 当前内容的缺口
 
 ### 1. 缺少"何时启动 dt"的判断标准
 
-现在只说"如果存在 .dt/ 项目，先执行 dt tree"。但没有说：
+旧入口只说"如果存在 .dt/ 项目，先执行 dt tree"。但没有说：
 - 什么类型的任务需要用 dt 记录？
 - 什么类型的任务不需要（直接回答即可）？
 - Agent 自己判断还是等用户指示？
@@ -46,7 +47,7 @@ Agent 可以自由编辑正文，但没有指导：
 
 ### 4. 缺少节点类型使用场景
 
-只列了预设类型名称，没有说：
+旧入口只列了预设类型名称，没有说：
 - goal/subproblem/solution/evaluation/reflection 各自代表什么情景
 - 什么时候用自定义类型
 - 节点粒度怎么把握（太细 vs 太粗）
@@ -100,8 +101,10 @@ Agent 应该主动：
 - 在关键分叉点呈现选项让用户选
 - 完成一个节点时更新状态并报告
 
-## 待讨论
+## 当前结论
+这些问题已经形成当前落地方案：
 
-1. CLAUDE.md 应该多长？太长 Agent 不会读，太短没用
-2. 工作流协议是否应该直接写进 CLAUDE.md，还是另外维护？
-3. 不同类型项目（代码 vs 策略规划）需要不同的协议吗？
+- `CLAUDE.md` / `AGENTS.md` 保持很短，只告诉 Agent 使用全局 `$dt` skill 并运行 `dt tree`。
+- 具体协议、写作风格、模板和分布式节点说明放在全局 `dt` skill。
+- 项目本地只保存项目特定的 DT 节点内容，不重复维护通用模板。
+- `dt show <id>` 展示节点实际 Markdown 路径，Agent 应读取实际路径而不是假设 `.dt/nodes/`。
